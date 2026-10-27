@@ -75,6 +75,7 @@ app.use(express.json({ limit: '1mb' }));
 // Keep existing flat URLs for browser scripts and stylesheets.
 app.use(express.static(path.join(PROJECT_ROOT, 'client')));
 app.use(express.static(path.join(PROJECT_ROOT, 'styles')));
+app.use(express.static(path.join(PROJECT_ROOT, 'images')));
 
 // Express sessions store flash messages and the local SQLite user ID.
 app.use(require('express-session')({

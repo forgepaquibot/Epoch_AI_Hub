@@ -5,19 +5,29 @@ block styles
 
 block content
   header.page-heading
-    p.eyebrow MODEL WORKSPACE
+    p.eyebrow AI WORKSPACE
     h1 AI Model Hub
-    p.lead Register installed Ollama models, index resources, and customize each model's instructions.
+    p.lead
+      | Register models from supported runtimes, create multiple agents
+      | with their own personalities, and connect resources for RAG.
 
   if message
     p.notice(role='status' aria-live='polite')= message
 
+  // ============================================================
+  // 1. REGISTER AN OLLAMA MODEL AND CREATE AN AGENT
+  // ============================================================
+
   section.panel
     .panel-heading
       div
-        p.eyebrow OLLAMA
-        h2 Register an installed model
-        p.muted Register a model already installed on the Ollama server. The app-managed embedding model is hidden from this list.
+        p.eyebrow SERVER MODELS
+        h2 Register an installed Ollama model
+        p.muted
+          | This registers a model available on the application server
+          | and creates an agent that uses it. The agent's personality
+          | can be changed independently afterward.
+
     if ollamaModels.length
       form(action='/register_ollama_model' method='post')
         .form-grid
@@ -27,106 +37,439 @@ block content
               option(value='') Choose a model
               each model in ollamaModels
                 option(value=model.name || model.model)= model.name || model.model
+
           label.field(for='registered-model-name')
-            span Display name
-            input#registered-model-name(type='text' name='name' maxlength='200' placeholder='Optional display name')
+            span Agent name
+            input#registered-model-name(
+              type='text'
+              name='name'
+              maxlength='200'
+              placeholder='e.g. Study Buddy'
+              required
+            )
+
           label.field.full-width(for='registered-model-description')
-            span Description
-            input#registered-model-description(type='text' name='description' maxlength='2000' placeholder='What is this model intended for?')
-        label.checkbox-label(for='model-public')
-          input#model-public(type='checkbox' name='is_public' value='1')
-          span Make this model registration public to other signed-in users
+            span Agent description
+            input#registered-model-description(
+              type='text'
+              name='description'
+              maxlength='2000'
+              placeholder='What is this agent intended for?'
+            )
+
+        label.checkbox-label(for='ollama-agent-public')
+          input#ollama-agent-public(
+            type='checkbox'
+            name='is_public'
+            value='1'
+          )
+          span Make this agent public to other signed-in users
+
         .form-actions
-          button(type='submit') Register model
+          button(type='submit') Register model and create agent
     else
       .empty-state
         h3 No Ollama models found
-        p Start Ollama and install a chat model before registering it here.
+        p
+          | The application could not find installed Ollama chat models.
+          | Start Ollama and install a compatible model on the server
+          | before registering one here.
+
+  // ============================================================
+  // 2. REGISTER A WEBLLM MODEL AND CREATE AN AGENT
+  // ============================================================
+
+  section.panel
+    .panel-heading
+      div
+        p.eyebrow BROWSER MODELS
+        h2 Register a WebLLM model
+        p.muted
+          | This registers a supported browser-model identifier. Model
+          | inference happens in the user's browser when compatible.
+          | An Ollama model name cannot automatically be used as a
+          | WebLLM model identifier.
+
+    form#register-webllm-form(
+      action='/register_webllm_model'
+      method='post'
+    )
+      .form-grid
+        label.field(for='webllm-model-id')
+          span WebLLM model ID
+          input#webllm-model-id(
+            type='text'
+            name='webllm_model_id'
+            maxlength='240'
+            required
+            placeholder='Exact ID from the WebLLM catalog'
+          )
+
+        label.field(for='webllm-model-name')
+          span Model display name
+          input#webllm-model-name(
+            type='text'
+            name='model_name'
+            maxlength='200'
+            required
+            placeholder='e.g. Browser Language Model'
+          )
+
+        label.field.full-width(for='webllm-model-description')
+          span Model description
+          input#webllm-model-description(
+            type='text'
+            name='model_description'
+            maxlength='2000'
+            placeholder='Optional description of the underlying model'
+          )
+
+        label.field(for='webllm-agent-name')
+          span Agent name
+          input#webllm-agent-name(
+            type='text'
+            name='agent_name'
+            maxlength='200'
+            required
+            placeholder='e.g. Local Study Buddy'
+          )
+
+        label.field(for='webllm-agent-description')
+          span Agent description
+          input#webllm-agent-description(
+            type='text'
+            name='description'
+            maxlength='2000'
+            placeholder='What should this agent help with?'
+          )
+
+        label.field.full-width(for='webllm-personality')
+          span Personality instructions
+          textarea#webllm-personality(
+            name='personality_prompt'
+            rows='4'
+            maxlength='12000'
+            placeholder='Describe the agent personality and response style.'
+          )
+
+        label.field.full-width(for='webllm-welcome')
+          span Welcome message
+          input#webllm-welcome(
+            type='text'
+            name='welcome_message'
+            maxlength='2000'
+            placeholder='Optional greeting shown when opening the agent'
+          )
+
+      label.checkbox-label(for='webllm-agent-public')
+        input#webllm-agent-public(
+          type='checkbox'
+          name='is_public'
+          value='1'
+        )
+        span Make this agent public to other signed-in users
+
+      .form-actions
+        button(type='submit') Register browser model and create agent
+
+      p.muted
+        | The browser will check WebGPU availability and verify the
+        | configured model against the supported WebLLM catalog when
+        | you chat. The first model load may require a large download.
+
+  // ============================================================
+  // 3. REGISTERED MODEL CATALOG
+  // ============================================================
 
   section.panel
     .panel-heading
       div
         p.eyebrow CATALOG
         h2 Registered models
-        p.muted Public registrations allow other accounts to access a model available through the same Ollama server.
-    if models.length
+        p.muted
+          | Models describe the underlying model identity. They can
+          | be reused by multiple agents and may have deployments
+          | through different compatible runtimes.
+
+    if registeredModels.length
       .model-grid
-        each model in models
+        each model in registeredModels
           article.model-card
             .card-topline
-              span.model-provider= model.provider || 'ollama'
-              span.visibility(class=model.is_public ? 'public' : 'private')= model.is_public ? 'Public' : 'Private'
+              span.model-provider= model.model_format || model.model_family || 'Model'
+              span.visibility(class=model.has_enabled_deployment ? 'public' : 'private')= model.has_enabled_deployment ? 'Deployment configured' : 'No enabled deployment'
+
             h3= model.name
-            p.model-reference= model.model_ref
-            p= model.description || 'No description provided.'
+            p.model-reference= model.model_key
+            p= model.description || 'No model description provided.'
             p.muted Registered by #{model.owner_username || 'Unknown'}
-            .card-actions
-              a.button(href='/models/' + model.ai_id) Model settings
-              a.button.secondary(href='/chat') Chat
+
+            if model.model_origin === 'fine_tuned'
+              p.muted Fine-tuned model
+
+            p.muted= 'Model ID: ' + model.model_id
+
+            if Number(model.user_id) === Number(currentUserId)
+              form.model-card-actions(
+                action='/catalog/models/' + model.model_id + '/unregister'
+                method='post'
+                onsubmit="return confirm('Unregister this model? Its dependent agents will become deprecated and unavailable. You can register the model again later.');"
+              )
+                button.button.secondary.unregister-button(
+                  type='submit'
+                  aria-label='Unregister model'
+                  title='Unregister model'
+                )
+                  img(src='/unregister_icon.png' alt='')
     else
-      p.muted No models have been registered yet.
+      p.empty-copy No models have been registered yet.
+
+  // ============================================================
+  // 4. CREATE ANOTHER AGENT FROM AN EXISTING MODEL
+  // ============================================================
 
   section.panel
     .panel-heading
       div
+        p.eyebrow AGENTS
+        h2 Create another agent
+        p.muted
+          | Reuse a registered model to create a different assistant.
+          | Each agent can have its own personality, greeting, visibility,
+          | and preferred runtime.
+
+    if registeredModels.length
+      form#new-agent-form(
+        action='/agents/create'
+        method='post'
+      )
+        .form-grid
+          label.field(for='new-agent-model')
+            span Underlying model
+            select#new-agent-model(name='model_id' required)
+              option(value='') Choose a registered model
+              each model in registeredModels
+                option(
+                  value=model.model_id
+                  data-model-key=model.model_key
+                )= model.name + ' — ' + model.model_key
+
+          label.field(for='new-agent-name')
+            span Agent name
+            input#new-agent-name(
+              type='text'
+              name='name'
+              maxlength='200'
+              required
+              placeholder='e.g. Coding Tutor'
+            )
+
+          label.field.full-width(for='new-agent-description')
+            span Description
+            input#new-agent-description(
+              type='text'
+              name='description'
+              maxlength='2000'
+              placeholder='What is this agent intended for?'
+            )
+
+          label.field.full-width(for='new-agent-personality')
+            span Personality instructions
+            textarea#new-agent-personality(
+              name='personality_prompt'
+              rows='4'
+              maxlength='12000'
+              placeholder='Describe how this agent should behave.'
+            )
+
+          label.field.full-width(for='new-agent-welcome')
+            span Welcome message
+            input#new-agent-welcome(
+              type='text'
+              name='welcome_message'
+              maxlength='2000'
+              placeholder='Optional initial greeting'
+            )
+
+          label.field(for='new-agent-runtime')
+            span Preferred runtime
+            select#new-agent-runtime(name='preferred_runtime_location')
+              option(value='device_local' selected) User's device (default)
+              option(value='server') Application server
+              option(value='hosted' disabled) Hosted provider (coming later)
+
+        label.checkbox-label(for='new-agent-public')
+          input#new-agent-public(
+            type='checkbox'
+            name='is_public'
+            value='1'
+          )
+          span Make this agent public to other signed-in users
+
+        .form-actions
+          button(type='submit') Create agent
+    else
+      p.empty-copy Register a model before creating additional agents.
+
+  // ============================================================
+  // 5. AGENT CATALOG
+  // ============================================================
+
+  section.panel
+    .panel-heading
+      div
+        p.eyebrow YOUR ASSISTANTS
+        h2 Registered agents
+        p.muted
+          | Each agent has its own settings and resource links, even
+          | when several agents use the same underlying model.
+          | You can delete any agent you own, whether active or deprecated.
+
+    if agents.length
+      .model-grid
+        each agent in agents
+          article.model-card
+            .card-topline
+              span.model-provider= agent.provider || 'Unknown provider'
+
+              if Number(agent.is_deprecated) === 1
+                span.status.status-disabled Deprecated
+              else
+                span.visibility(class=agent.is_public ? 'public' : 'private')= agent.is_public ? 'Public' : 'Private'
+
+            h3= agent.name
+            p.model-reference= agent.model_name || agent.model_key
+            p= agent.description || 'No agent description provided.'
+
+            if Number(agent.is_deprecated) === 1
+              p.muted This agent is deprecated and cannot be used.
+            else
+              p.muted= 'Preferred runtime: ' + (agent.preferred_runtime_location || 'device_local')
+              p.muted Created by #{agent.owner_username || 'Unknown'}
+
+            .card-actions
+              if Number(agent.is_deprecated) !== 1
+                a.button(href='/models/' + agent.agent_id) Agent settings
+                a.button.secondary(
+                  href='/chat?agent_id=' + agent.agent_id + '&runtime_location=' + encodeURIComponent(agent.preferred_runtime_location || 'device_local')
+                ) Chat
+
+              if Number(agent.user_id) === Number(currentUserId)
+                form.agent-delete-form(
+                  action='/agents/' + agent.agent_id + '/delete'
+                  method='post'
+                  onsubmit="return confirm('Delete this agent and its conversation history? The underlying model will remain. This cannot be undone.');"
+                )
+                  button.button.secondary.agent-delete-button(
+                    type='submit'
+                    aria-label='Delete agent'
+                    title='Delete agent'
+                  )
+                    img(src='/trash_icon.png' alt='')
+    else
+      p.empty-copy No agents have been created yet.
+
+  // ============================================================
+  // 6. RESOURCE INDEXING AND AGENT RESOURCE LINKS
+  // ============================================================
+
+  section.panel#rag-panel
+    .panel-heading
+      div
         p.eyebrow RAG INDEXING
         h2 Process a resource
-        p.muted Indexing extracts content and builds embeddings. This is separate from fine-tuning model weights.
-    if models.length && ownedResources.length
-      form#process-resource-form(action='/process_resource' method='post')
+        p.muted
+          | Indexing extracts content and builds embeddings. This is
+          | separate from fine-tuning model weights. Indexed resources
+          | are linked to an agent rather than directly to a model.
+
+    if activeAgents.length && ownedResources.length
+      form#process-resource-form(
+        action='/process_resource'
+        method='post'
+      )
         .form-grid
-          label.field(for='process-model')
-            span Model
-            select#process-model(name='ai_id' required)
-              option(value='') Choose a model
-              each model in models
-                option(value=model.ai_id)= model.name
+          label.field(for='process-agent')
+            span Agent
+            select#process-agent(name='agent_id' required)
+              option(value='') Choose an agent
+              each agent in activeAgents
+                option(value=agent.agent_id)= agent.name + ' — ' + (agent.model_name || agent.model_key)
+
           label.field(for='process-resource')
             span Resource you own
             select#process-resource(name='resource_id' required)
               option(value='') Choose a resource
               each resource in ownedResources
                 option(value=resource.resource_id)= resource.title + ' [' + (resource.processing_status || 'uploaded') + ']'
+
         .form-actions
           button(type='submit') Index and link resource
-          p#processing-status.form-status(role='status' aria-live='polite')
-    else
-      p.empty-copy Upload a resource and register a model to begin indexing.
+          p#processing-status.form-status(
+            role='status'
+            aria-live='polite'
+          )
 
-    if models.length && readyResources.length
+    else
+      p.empty-copy
+        | Create an active agent and upload a resource to begin indexing.
+
+    if activeAgents.length && readyResources.length
       h3 Link an already indexed resource
+
       form(action='/link_resource' method='post')
         .form-grid
-          label.field(for='link-model')
-            span Model
-            select#link-model(name='ai_id' required)
-              option(value='') Choose a model
-              each model in models
-                option(value=model.ai_id)= model.name
+          label.field(for='link-agent')
+            span Agent
+            select#link-agent(name='agent_id' required)
+              option(value='') Choose an agent
+              each agent in activeAgents
+                option(value=agent.agent_id)= agent.name + ' — ' + (agent.model_name || agent.model_key)
+
           label.field(for='link-resource')
             span Ready resource
             select#link-resource(name='resource_id' required)
               option(value='') Choose a ready resource
               each resource in readyResources
                 option(value=resource.resource_id)= resource.title
+
         button(type='submit') Link resource
+
+  // ============================================================
+  // 7. RESOURCE PROCESSING ACTIVITY
+  // ============================================================
 
   section.panel
     .panel-heading
       div
         p.eyebrow ACTIVITY
         h2 Recent indexing jobs
-    if processingJobs.length
-      .table-wrap
-        table
-          thead
-            tr
-              th Resource
-              th Operation
-              th Status
-              th Progress
-              th Started
-          tbody
+        p.muted
+          | Job statuses and progress refresh automatically.
+
+    form.job-history-actions(
+      action='/resource-processing/jobs/clear-history'
+      method='post'
+      onsubmit="return confirm('Clear completed, failed, and cancelled indexing jobs from your history? Pending and running jobs will remain. Resources and indexed content will not be deleted.');"
+    )
+      button.button.secondary.clear-history-button(
+        type='submit'
+        aria-label='Clear indexing history'
+        title='Clear History'
+      )
+        img(src='/clear_history_icon.png' alt='')
+
+    .table-wrap
+      table
+        thead
+          tr
+            th Resource
+            th Operation
+            th Status
+            th Progress
+            th Started
+        tbody#resource-processing-history-body
+          if processingJobs.length
             each job in processingJobs
               tr
                 td= job.resource_title
@@ -135,13 +478,22 @@ block content
                   span.status(class='status-' + job.status)= job.status
                 td= (job.progress_percent || 0) + '%'
                 td= job.started_at || job.created_at || '—'
-    else
-      p.empty-copy No indexing jobs yet.
+
+    p#resource-processing-history-empty.empty-copy(
+      hidden=processingJobs.length > 0
+    ) No indexing jobs yet.
+
+  // ============================================================
+  // 8. FINE-TUNING
+  // ============================================================
 
   .note-strip
     div
       h2 Want to fine-tune a model?
-      p Fine-tuning uses a separate Python training process and is not the same as resource indexing.
+      p
+        | Fine-tuning uses a separate training process and is not the
+        | same as resource indexing. Fine-tuning support is being
+        | developed separately from model inference.
     a.button.secondary(href='/training') View training catalog
 
 block scripts

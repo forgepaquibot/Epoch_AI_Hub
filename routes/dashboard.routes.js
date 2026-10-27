@@ -11,7 +11,7 @@ const router = express.Router();
 |--------------------------------------------------------------------------
 | GET /dashboard
 |--------------------------------------------------------------------------
-| Show the user's resource, model, chat, and indexing-job summaries.
+| Show resource, model, agent, chat, and indexing-job summaries.
 */
 
 router.get('/dashboard', requireUser, async (req, res, next) => {
@@ -21,6 +21,7 @@ router.get('/dashboard', requireUser, async (req, res, next) => {
     const [
       resourceCounts,
       modelCounts,
+      agentCounts,
       chatCounts,
       recentResources,
       recentChats,
@@ -31,7 +32,9 @@ router.get('/dashboard', requireUser, async (req, res, next) => {
         `SELECT
            COUNT(*) AS total,
            COALESCE(
-             SUM(CASE WHEN is_public = 1 THEN 1 ELSE 0 END),
+             SUM(
+               CASE WHEN is_public = 1 THEN 1 ELSE 0 END
+             ),
              0
            ) AS public_count
          FROM data_resources
@@ -41,13 +44,35 @@ router.get('/dashboard', requireUser, async (req, res, next) => {
 
       // Count models owned by the user or available publicly.
       sqlGet(
-        `SELECT COUNT(*) AS total
-         FROM ai_llms
+        `SELECT
+           COUNT(*) AS total,
+           COALESCE(
+             SUM(
+               CASE WHEN is_public = 1 THEN 1 ELSE 0 END
+             ),
+             0
+           ) AS public_count
+         FROM ai_models
          WHERE user_id = ? OR is_public = 1`,
         [userId]
       ),
 
-      // Count this user's chat sessions.
+      // Count agents owned by the user or available publicly.
+      sqlGet(
+        `SELECT
+           COUNT(*) AS total,
+           COALESCE(
+             SUM(
+               CASE WHEN is_public = 1 THEN 1 ELSE 0 END
+             ),
+             0
+           ) AS public_count
+         FROM ai_agents
+         WHERE user_id = ? OR is_public = 1`,
+        [userId]
+      ),
+
+      // Count chat sessions belonging to the current user.
       sqlGet(
         `SELECT COUNT(*) AS total
          FROM chat_sessions
@@ -66,25 +91,38 @@ router.get('/dashboard', requireUser, async (req, res, next) => {
            DATE(dr.date_added) AS date_added,
            u.username AS owner_username
          FROM data_resources dr
-         JOIN users u ON u.user_id = dr.user_id
+         JOIN users u
+           ON u.user_id = dr.user_id
          WHERE dr.user_id = ? OR dr.is_public = 1
-         ORDER BY dr.date_added DESC, dr.resource_id DESC
+         ORDER BY
+           dr.date_added DESC,
+           dr.resource_id DESC
          LIMIT 5`,
         [userId]
       ),
 
-      // Most recently updated conversations belonging to this user.
+      // Most recently updated conversations.
+      // Each conversation belongs to an agent, which references a model.
       sqlAll(
         `SELECT
            cs.session_id,
-           cs.ai_id,
+           cs.agent_id,
+           cs.agent_id AS ai_id,
            cs.title,
            cs.updated_at,
-           ai.name AS model_name
+           cs.runtime_location,
+           a.name AS agent_name,
+           m.name AS model_name,
+           m.model_key
          FROM chat_sessions cs
-         JOIN ai_llms ai ON ai.ai_id = cs.ai_id
+         JOIN ai_agents a
+           ON a.agent_id = cs.agent_id
+         JOIN ai_models m
+           ON m.model_id = a.model_id
          WHERE cs.user_id = ?
-         ORDER BY cs.updated_at DESC, cs.session_id DESC
+         ORDER BY
+           cs.updated_at DESC,
+           cs.session_id DESC
          LIMIT 5`,
         [userId]
       ),
@@ -96,6 +134,8 @@ router.get('/dashboard', requireUser, async (req, res, next) => {
            rpj.operation,
            rpj.status,
            rpj.progress_percent,
+           rpj.created_at,
+           rpj.started_at,
            dr.title AS resource_title
          FROM resource_processing_jobs rpj
          JOIN data_resources dr
@@ -111,6 +151,7 @@ router.get('/dashboard', requireUser, async (req, res, next) => {
       title: 'Dashboard',
       resourceCounts,
       modelCounts,
+      agentCounts,
       chatCounts,
       recentResources,
       recentChats,

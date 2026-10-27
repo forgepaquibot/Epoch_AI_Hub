@@ -37,7 +37,9 @@
 }
 
 .chat-output {
-  min-height: 330px;
+  height: 700px;
+  overflow-y: auto;     /* Adds vertical scrollbar when needed */
+  border: 1px solid #ccc; 
 }
 
 .chat-response {
@@ -138,8 +140,63 @@
   }
 }
 
+/* ============================================================
+   STOP GENERATION BUTTON
+   ============================================================ */
+
+/* Red button while the model is generating. */
+#send-message[data-action="stop"] {
+  background-color: #b42318;
+  border-color: #b42318;
+  color: #ffffff;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+/* Hover feedback for the Stop button. */
+#send-message[data-action="stop"]:hover {
+  background-color: #8f1d14;
+  border-color: #8f1d14;
+}
+
+/* Keep keyboard navigation visible. */
+#send-message:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
+
+/* Visual feedback while cancellation is being processed. */
+#send-message[data-action="stopping"] {
+  background-color: #777777;
+  border-color: #777777;
+  color: #ffffff;
+  opacity: 0.8;
+  cursor: wait;
+}
+
+/* Keep the generating spinner visible. */
+#chat-status.is-generating::before {
+  content: "";
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  flex-shrink: 0;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: generating-message-spin 0.7s linear infinite;
+}
+
+/* Respect reduced-motion preferences. */
 @media (prefers-reduced-motion: reduce) {
-  #search-status.is-generating::before {
+  #chat-status.is-generating::before {
     animation: none;
+  }
+
+  #send-message[data-action="stop"] {
+    transition: none;
   }
 }

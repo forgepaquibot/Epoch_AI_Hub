@@ -1,20 +1,160 @@
 PRAGMA foreign_keys = ON;
 
 -- ============================================================
--- 1. USERS
+-- AI MODEL HUB - SCHEMA V2
+--
+-- Models and agents are separate.
+-- One model can power multiple agents.
+-- Device-local inference is the default.
+-- Server and hosted runtimes are configurable independently.
+-- Model availability must be checked at runtime.
+-- Paid server inference is prepared for future plan enforcement.
+-- Never store raw provider API keys in this database.
+--
+-- IMPORTANT: This is a fresh-schema definition, NOT a migration.
+-- ============================================================
+
+
+-- ============================================================
+-- 1. USERS AND USER PREFERENCES
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,
     auth0_sub TEXT UNIQUE,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (password_hash IS NOT NULL OR auth0_sub IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id INTEGER PRIMARY KEY,
+
+    default_runtime_location TEXT NOT NULL DEFAULT 'device_local'
+        CHECK (
+            default_runtime_location IN ('device_local', 'server', 'hosted')
+        ),
+
+    fallback_policy TEXT NOT NULL DEFAULT 'never'
+        CHECK (fallback_policy IN ('never', 'ask')),
+
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
 );
 
 
 -- ============================================================
--- 2. RESOURCE METADATA
+-- 2. SERVICE PLANS AND SUBSCRIPTIONS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS service_plans (
+    plan_id INTEGER PRIMARY KEY,
+    plan_key TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+
+    allows_server_inference INTEGER NOT NULL DEFAULT 0
+        CHECK (allows_server_inference IN (0, 1)),
+
+    allows_hosted_providers INTEGER NOT NULL DEFAULT 0
+        CHECK (allows_hosted_providers IN (0, 1)),
+
+    monthly_server_token_limit INTEGER
+        CHECK (
+            monthly_server_token_limit IS NULL
+            OR monthly_server_token_limit >= 0
+        ),
+
+    is_active INTEGER NOT NULL DEFAULT 1
+        CHECK (is_active IN (0, 1)),
+
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT OR IGNORE INTO service_plans (
+    plan_key,
+    name,
+    description,
+    allows_server_inference,
+    allows_hosted_providers,
+    monthly_server_token_limit
+)
+VALUES
+    (
+        'free',
+        'Free',
+        'Use compatible models on your own device.',
+        0,
+        0,
+        0
+    ),
+    (
+        'server_basic',
+        'Server',
+        'Placeholder for future server-hosted inference.',
+        1,
+        0,
+        100000
+    ),
+    (
+        'server_plus',
+        'Server Plus',
+        'Placeholder for a future higher server inference allowance.',
+        1,
+        1,
+        1000000
+    );
+
+CREATE TABLE IF NOT EXISTS user_subscriptions (
+    subscription_id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    plan_id INTEGER NOT NULL,
+
+    status TEXT NOT NULL DEFAULT 'active'
+        CHECK (
+            status IN (
+                'trialing',
+                'active',
+                'past_due',
+                'cancelled',
+                'expired',
+                'incomplete'
+            )
+        ),
+
+    starts_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ends_at TEXT,
+
+    billing_provider TEXT,
+    external_customer_ref TEXT,
+    external_subscription_ref TEXT,
+
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE,
+
+    FOREIGN KEY (plan_id)
+        REFERENCES service_plans(plan_id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user_status
+    ON user_subscriptions(user_id, status, ends_at);
+
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_external_ref
+    ON user_subscriptions(billing_provider, external_subscription_ref);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_current_subscription_per_user
+    ON user_subscriptions(user_id)
+    WHERE status IN ('trialing', 'active');
+
+
+-- ============================================================
+-- 3. RESOURCE METADATA
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS authors (
@@ -35,13 +175,12 @@ CREATE TABLE IF NOT EXISTS sources (
 
 
 -- ============================================================
--- 3. GENERAL DATA RESOURCES
--- Supports pdf, txt, csv, json, jsonl, vector, and other
--- application-supported resource types.
+-- 4. GENERAL DATA RESOURCES
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS data_resources (
     resource_id INTEGER PRIMARY KEY,
+
     title TEXT NOT NULL,
     description TEXT,
 
@@ -67,7 +206,11 @@ CREATE TABLE IF NOT EXISTS data_resources (
     processing_status TEXT NOT NULL DEFAULT 'uploaded'
         CHECK (
             processing_status IN (
-                'uploaded', 'queued', 'processing', 'ready', 'failed'
+                'uploaded',
+                'queued',
+                'processing',
+                'ready',
+                'failed'
             )
         ),
 
@@ -92,11 +235,6 @@ CREATE INDEX IF NOT EXISTS idx_data_resources_status
 
 CREATE INDEX IF NOT EXISTS idx_data_resources_checksum
     ON data_resources(checksum_sha256);
-
-
--- ============================================================
--- 4. RESOURCE AUTHORS AND SUBJECTS
--- ============================================================
 
 CREATE TABLE IF NOT EXISTS resource_authors (
     resource_id INTEGER NOT NULL,
@@ -126,79 +264,339 @@ CREATE TABLE IF NOT EXISTS resource_subjects (
 
 
 -- ============================================================
--- 5. MODEL REGISTRY
+-- 5. MODEL CATALOG
 --
--- model_ref identifies the runnable model, such as an Ollama
--- model name. training_base_ref identifies the checkpoint
--- to use when preparing a genuine fine-tuning job.
---
--- personality_prompt controls runtime behavior.
--- welcome_message is displayed by the chat interface.
+-- An ai_models row identifies a logical model, not a specific
+-- installation. A model can have multiple agents and deployments.
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS ai_llms (
-    ai_id INTEGER PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS ai_models (
+    model_id INTEGER PRIMARY KEY,
 
     name TEXT NOT NULL,
+    model_key TEXT NOT NULL,
+
     description TEXT,
-
-    provider TEXT NOT NULL DEFAULT 'ollama',
-    model_ref TEXT NOT NULL,
-
+    model_family TEXT,
     model_format TEXT,
+    model_version TEXT,
     model_digest TEXT,
     artifact_uri TEXT,
+    metadata_json TEXT,
 
     model_origin TEXT NOT NULL DEFAULT 'registered'
         CHECK (
-            model_origin IN (
-                'registered', 'imported', 'fine_tuned'
-            )
+            model_origin IN ('registered', 'imported', 'fine_tuned')
         ),
 
-    parent_ai_id INTEGER,
-
-    -- Checkpoint identifier understood by the training worker.
+    parent_model_id INTEGER,
     training_base_ref TEXT,
-
-    -- Personality instructions applied at inference time.
-    personality_prompt TEXT,
-
-    -- Custom greeting displayed when a chat begins.
-    welcome_message TEXT,
 
     date_created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     is_public INTEGER NOT NULL DEFAULT 0
         CHECK (is_public IN (0, 1)),
 
+    -- 1 = registered in the application catalog
+    -- 0 = unregistered; the model record and files are retained
+    is_registered INTEGER NOT NULL DEFAULT 1
+        CHECK (is_registered IN (0, 1)),
+
     user_id INTEGER NOT NULL,
+
+    UNIQUE (user_id, model_key),
 
     FOREIGN KEY (user_id)
         REFERENCES users(user_id) ON DELETE CASCADE,
 
-    FOREIGN KEY (parent_ai_id)
-        REFERENCES ai_llms(ai_id) ON DELETE SET NULL,
-
-    UNIQUE (user_id, provider, model_ref)
+    FOREIGN KEY (parent_model_id)
+        REFERENCES ai_models(model_id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_ai_llms_user
-    ON ai_llms(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_models_user
+    ON ai_models(user_id);
 
-CREATE INDEX IF NOT EXISTS idx_ai_llms_public
-    ON ai_llms(is_public);
+CREATE INDEX IF NOT EXISTS idx_ai_models_public
+    ON ai_models(is_public);
 
-CREATE INDEX IF NOT EXISTS idx_ai_llms_provider_ref
-    ON ai_llms(provider, model_ref);
+CREATE INDEX IF NOT EXISTS idx_ai_models_parent
+    ON ai_models(parent_model_id);
 
-CREATE INDEX IF NOT EXISTS idx_ai_llms_parent
-    ON ai_llms(parent_ai_id);
+CREATE INDEX IF NOT EXISTS idx_ai_models_key
+    ON ai_models(model_key);
 
 
 -- ============================================================
--- 6. NORMALIZED RESOURCE ITEMS
--- Examples: text_chunk, csv_row, json_record, vector.
+-- 6. SERVER AND HOSTED PROVIDER CONNECTIONS
+--
+-- Supports Ollama and other server runtimes/providers.
+--
+-- Examples for provider:
+--   ollama
+--   llamacpp
+--   vllm
+--   openai_compatible
+--   another provider adapter implemented by the application
+--
+-- NULL owner_user_id means a platform-managed connection.
+-- credential_ref references a secret stored securely elsewhere.
+-- Never put raw API keys in SQLite.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS model_connections (
+    connection_id INTEGER PRIMARY KEY,
+
+    owner_user_id INTEGER,
+
+    name TEXT NOT NULL,
+    provider TEXT NOT NULL,
+
+    runtime_location TEXT NOT NULL
+        CHECK (runtime_location IN ('server', 'hosted')),
+
+    base_url TEXT,
+    credential_ref TEXT,
+    connection_config_json TEXT,
+
+    is_enabled INTEGER NOT NULL DEFAULT 1
+        CHECK (is_enabled IN (0, 1)),
+
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (owner_user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_model_connections_owner
+    ON model_connections(owner_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_model_connections_provider_location
+    ON model_connections(provider, runtime_location);
+
+CREATE INDEX IF NOT EXISTS idx_model_connections_enabled
+    ON model_connections(is_enabled);
+
+
+-- ============================================================
+-- 7. MODEL DEPLOYMENTS
+--
+-- Maps a logical model to a provider-specific model identifier
+-- through a server or hosted connection.
+--
+-- Availability is cached only. Check the provider at runtime because
+-- a model can be removed or a runtime can go offline.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS model_deployments (
+    deployment_id INTEGER PRIMARY KEY,
+
+    model_id INTEGER NOT NULL,
+    connection_id INTEGER NOT NULL,
+
+    provider_model_ref TEXT NOT NULL,
+
+    capabilities_json TEXT,
+    provider_options_json TEXT,
+
+    availability_status TEXT NOT NULL DEFAULT 'unknown'
+        CHECK (
+            availability_status IN (
+                'unknown',
+                'available',
+                'missing',
+                'unavailable',
+                'error'
+            )
+        ),
+
+    last_checked_at TEXT,
+    last_error TEXT,
+
+    is_enabled INTEGER NOT NULL DEFAULT 1
+        CHECK (is_enabled IN (0, 1)),
+
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE (connection_id, provider_model_ref),
+
+    FOREIGN KEY (model_id)
+        REFERENCES ai_models(model_id) ON DELETE CASCADE,
+
+    FOREIGN KEY (connection_id)
+        REFERENCES model_connections(connection_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_model_deployments_model
+    ON model_deployments(model_id);
+
+CREATE INDEX IF NOT EXISTS idx_model_deployments_connection
+    ON model_deployments(connection_id);
+
+CREATE INDEX IF NOT EXISTS idx_model_deployments_status
+    ON model_deployments(availability_status, is_enabled);
+
+
+-- ============================================================
+-- 8. USER DEVICES AND MODEL INSTALLATIONS
+--
+-- A device record is created when the user enables local inference.
+-- device_token_hash should be a hash of a random app-generated token,
+-- not a browser fingerprint.
+--
+-- The status is a cache. Availability must be rechecked before use.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS user_devices (
+    device_id INTEGER PRIMARY KEY,
+
+    user_id INTEGER NOT NULL,
+
+    device_token_hash TEXT NOT NULL UNIQUE,
+    device_name TEXT,
+
+    runtime_type TEXT NOT NULL DEFAULT 'browser'
+        CHECK (
+            runtime_type IN ('browser', 'desktop_companion', 'other')
+        ),
+
+    capabilities_json TEXT,
+
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TEXT,
+
+    is_active INTEGER NOT NULL DEFAULT 1
+        CHECK (is_active IN (0, 1)),
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_devices_user_active
+    ON user_devices(user_id, is_active);
+
+CREATE TABLE IF NOT EXISTS device_model_installations (
+    installation_id INTEGER PRIMARY KEY,
+
+    device_id INTEGER NOT NULL,
+    model_id INTEGER NOT NULL,
+
+    provider TEXT NOT NULL,
+
+    runtime_kind TEXT NOT NULL
+        CHECK (
+            runtime_kind IN (
+                'webllm',
+                'ollama_local',
+                'llamacpp_local',
+                'other'
+            )
+        ),
+
+    provider_model_ref TEXT NOT NULL,
+
+    status TEXT NOT NULL DEFAULT 'unknown'
+        CHECK (
+            status IN (
+                'unknown',
+                'checking',
+                'available',
+                'missing',
+                'unsupported',
+                'error'
+            )
+        ),
+
+    last_checked_at TEXT,
+    last_error TEXT,
+    runtime_details_json TEXT,
+
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE (device_id, provider, provider_model_ref),
+
+    FOREIGN KEY (device_id)
+        REFERENCES user_devices(device_id) ON DELETE CASCADE,
+
+    FOREIGN KEY (model_id)
+        REFERENCES ai_models(model_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_device_model_installations_device_status
+    ON device_model_installations(device_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_device_model_installations_model
+    ON device_model_installations(model_id);
+
+
+-- ============================================================
+-- 9. AGENTS
+--
+-- An agent holds its own personality and configuration.
+-- Multiple agents can reference the same model_id.
+-- Device-local inference is the default.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS ai_agents (
+    agent_id INTEGER PRIMARY KEY,
+
+    model_id INTEGER NOT NULL,
+
+    name TEXT NOT NULL,
+    description TEXT,
+
+    personality_prompt TEXT,
+    welcome_message TEXT,
+
+    preferred_runtime_location TEXT NOT NULL DEFAULT 'device_local'
+        CHECK (
+            preferred_runtime_location IN (
+                'device_local', 'server', 'hosted'
+            )
+        ),
+
+    allow_fallback_to_server INTEGER NOT NULL DEFAULT 0
+        CHECK (allow_fallback_to_server IN (0, 1)),
+
+    preferred_server_deployment_id INTEGER,
+
+    date_created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    is_public INTEGER NOT NULL DEFAULT 0
+        CHECK (is_public IN (0, 1)),
+
+    is_deprecated INTEGER NOT NULL DEFAULT 0
+        CHECK (is_deprecated IN (0, 1)),
+
+    user_id INTEGER NOT NULL,
+
+    FOREIGN KEY (model_id)
+        REFERENCES ai_models(model_id) ON DELETE RESTRICT,
+
+    FOREIGN KEY (preferred_server_deployment_id)
+        REFERENCES model_deployments(deployment_id) ON DELETE SET NULL,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_agents_user
+    ON ai_agents(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_ai_agents_public
+    ON ai_agents(is_public);
+
+CREATE INDEX IF NOT EXISTS idx_ai_agents_model
+    ON ai_agents(model_id);
+
+CREATE INDEX IF NOT EXISTS idx_ai_agents_runtime
+    ON ai_agents(preferred_runtime_location);
+
+
+-- ============================================================
+-- 10. NORMALIZED RESOURCE ITEMS
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS resource_items (
@@ -228,8 +626,7 @@ CREATE INDEX IF NOT EXISTS idx_resource_items_type
 
 
 -- ============================================================
--- 7. RESOURCE EMBEDDINGS
--- Embeddings are used for retrieval, not weight fine-tuning.
+-- 11. RESOURCE EMBEDDINGS
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS resource_embeddings (
@@ -259,9 +656,7 @@ CREATE INDEX IF NOT EXISTS idx_resource_embeddings_model
 
 
 -- ============================================================
--- 8. RESOURCE PROCESSING JOBS
--- These jobs extract, parse, validate and index resources.
--- They do not fine-tune model weights.
+-- 12. RESOURCE PROCESSING JOBS
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS resource_processing_jobs (
@@ -272,16 +667,12 @@ CREATE TABLE IF NOT EXISTS resource_processing_jobs (
 
     operation TEXT NOT NULL DEFAULT 'index'
         CHECK (
-            operation IN (
-                'extract', 'validate', 'index', 'import_vectors'
-            )
+            operation IN ('extract', 'validate', 'index', 'import_vectors')
         ),
 
     status TEXT NOT NULL DEFAULT 'pending'
         CHECK (
-            status IN (
-                'pending', 'running', 'done', 'failed', 'cancelled'
-            )
+            status IN ('pending', 'running', 'done', 'failed', 'cancelled')
         ),
 
     progress_percent INTEGER NOT NULL DEFAULT 0
@@ -313,15 +704,13 @@ CREATE INDEX IF NOT EXISTS idx_resource_jobs_status
 
 
 -- ============================================================
--- 9. RESOURCES SELECTED FOR A MODEL
--- This table records which resources a user enables for a model.
--- Access permissions must also be checked in application code.
+-- 13. RESOURCES SELECTED FOR AN AGENT
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS model_resource_links (
+CREATE TABLE IF NOT EXISTS agent_resource_links (
     link_id INTEGER PRIMARY KEY,
 
-    ai_id INTEGER NOT NULL,
+    agent_id INTEGER NOT NULL,
     resource_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
 
@@ -330,10 +719,10 @@ CREATE TABLE IF NOT EXISTS model_resource_links (
 
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    UNIQUE (ai_id, resource_id, user_id),
+    UNIQUE (agent_id, resource_id, user_id),
 
-    FOREIGN KEY (ai_id)
-        REFERENCES ai_llms(ai_id) ON DELETE CASCADE,
+    FOREIGN KEY (agent_id)
+        REFERENCES ai_agents(agent_id) ON DELETE CASCADE,
 
     FOREIGN KEY (resource_id)
         REFERENCES data_resources(resource_id) ON DELETE CASCADE,
@@ -342,25 +731,41 @@ CREATE TABLE IF NOT EXISTS model_resource_links (
         REFERENCES users(user_id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_model_resource_links_model
-    ON model_resource_links(ai_id);
+CREATE INDEX IF NOT EXISTS idx_agent_resource_links_agent
+    ON agent_resource_links(agent_id);
 
-CREATE INDEX IF NOT EXISTS idx_model_resource_links_resource
-    ON model_resource_links(resource_id);
+CREATE INDEX IF NOT EXISTS idx_agent_resource_links_resource
+    ON agent_resource_links(resource_id);
 
-CREATE INDEX IF NOT EXISTS idx_model_resource_links_user
-    ON model_resource_links(user_id);
+CREATE INDEX IF NOT EXISTS idx_agent_resource_links_user
+    ON agent_resource_links(user_id);
 
 
 -- ============================================================
--- 10. CHAT HISTORY
+-- 14. CHAT HISTORY
+--
+-- Each session records the agent and runtime route actually selected.
+-- The application must verify device, installation, deployment,
+-- agent and user ownership before sending any inference request.
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS chat_sessions (
     session_id INTEGER PRIMARY KEY,
 
     user_id INTEGER NOT NULL,
-    ai_id INTEGER NOT NULL,
+    agent_id INTEGER NOT NULL,
+
+    runtime_location TEXT NOT NULL DEFAULT 'device_local'
+        CHECK (
+            runtime_location IN ('device_local', 'server', 'hosted')
+        ),
+
+    device_id INTEGER,
+    device_model_installation_id INTEGER,
+    deployment_id INTEGER,
+
+    resolved_provider TEXT,
+    resolved_model_ref TEXT,
 
     title TEXT,
 
@@ -370,12 +775,30 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
     FOREIGN KEY (user_id)
         REFERENCES users(user_id) ON DELETE CASCADE,
 
-    FOREIGN KEY (ai_id)
-        REFERENCES ai_llms(ai_id) ON DELETE CASCADE
+    FOREIGN KEY (agent_id)
+        REFERENCES ai_agents(agent_id) ON DELETE CASCADE,
+
+    FOREIGN KEY (device_id)
+        REFERENCES user_devices(device_id) ON DELETE SET NULL,
+
+    FOREIGN KEY (device_model_installation_id)
+        REFERENCES device_model_installations(installation_id) ON DELETE SET NULL,
+
+    FOREIGN KEY (deployment_id)
+        REFERENCES model_deployments(deployment_id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_chat_sessions_user
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_updated
     ON chat_sessions(user_id, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_agent_updated
+    ON chat_sessions(agent_id, updated_at);
+
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_deployment
+    ON chat_sessions(deployment_id);
+
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_device_installation
+    ON chat_sessions(device_model_installation_id);
 
 CREATE TABLE IF NOT EXISTS chat_messages (
     message_id INTEGER PRIMARY KEY,
@@ -383,9 +806,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     session_id INTEGER NOT NULL,
 
     role TEXT NOT NULL
-        CHECK (
-            role IN ('system', 'user', 'assistant', 'tool')
-        ),
+        CHECK (role IN ('system', 'user', 'assistant', 'tool')),
 
     content TEXT NOT NULL,
     sources_json TEXT,
@@ -401,8 +822,7 @@ CREATE INDEX IF NOT EXISTS idx_chat_messages_session
 
 
 -- ============================================================
--- 11. FINE-TUNING DATASETS
--- Each dataset is a collection of reviewed training examples.
+-- 15. FINE-TUNING DATASETS
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS fine_tuning_datasets (
@@ -415,16 +835,11 @@ CREATE TABLE IF NOT EXISTS fine_tuning_datasets (
 
     format TEXT NOT NULL DEFAULT 'conversational_jsonl'
         CHECK (
-            format IN (
-                'conversational_jsonl',
-                'prompt_completion_jsonl'
-            )
+            format IN ('conversational_jsonl', 'prompt_completion_jsonl')
         ),
 
     status TEXT NOT NULL DEFAULT 'draft'
-        CHECK (
-            status IN ('draft', 'review', 'ready', 'failed')
-        ),
+        CHECK (status IN ('draft', 'review', 'ready', 'failed')),
 
     example_count INTEGER NOT NULL DEFAULT 0
         CHECK (example_count >= 0),
@@ -444,20 +859,13 @@ CREATE INDEX IF NOT EXISTS idx_fine_tuning_datasets_status
 
 
 -- ============================================================
--- 12. FINE-TUNING EXAMPLES
---
--- messages_json stores a conversational example, for example:
--- {"messages":[{"role":"user","content":"..."}, ...]}
---
--- Examples derived from a resource should be reviewed and
--- explicitly approved before they are included in a job.
+-- 16. FINE-TUNING EXAMPLES
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS fine_tuning_examples (
     example_id INTEGER PRIMARY KEY,
 
     dataset_id INTEGER NOT NULL,
-
     source_resource_id INTEGER,
 
     messages_json TEXT NOT NULL,
@@ -486,16 +894,14 @@ CREATE INDEX IF NOT EXISTS idx_fine_tuning_examples_source
 
 
 -- ============================================================
--- 13. FINE-TUNING JOBS
---
--- These represent actual training-worker jobs, unlike resource
--- processing jobs, which only prepare content for retrieval.
+-- 17. FINE-TUNING JOBS
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS fine_tuning_jobs (
     fine_tuning_job_id INTEGER PRIMARY KEY,
 
-    base_ai_id INTEGER NOT NULL,
+    base_model_id INTEGER NOT NULL,
+    source_agent_id INTEGER,
     created_by INTEGER NOT NULL,
 
     status TEXT NOT NULL DEFAULT 'pending'
@@ -517,18 +923,15 @@ CREATE TABLE IF NOT EXISTS fine_tuning_jobs (
     training_method TEXT,
     config_json TEXT,
 
-    -- Desired registered name for the trained Ollama model.
     output_model_name TEXT,
 
-    -- Visibility chosen for the resulting model.
     output_is_public INTEGER NOT NULL DEFAULT 0
         CHECK (output_is_public IN (0, 1)),
 
-    -- Snapshot of personality settings for reproducible jobs.
     personality_prompt_snapshot TEXT,
     welcome_message_snapshot TEXT,
 
-    output_ai_id INTEGER,
+    output_model_id INTEGER,
     output_artifact_uri TEXT,
 
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -537,14 +940,17 @@ CREATE TABLE IF NOT EXISTS fine_tuning_jobs (
 
     error_message TEXT,
 
-    FOREIGN KEY (base_ai_id)
-        REFERENCES ai_llms(ai_id) ON DELETE RESTRICT,
+    FOREIGN KEY (base_model_id)
+        REFERENCES ai_models(model_id) ON DELETE RESTRICT,
+
+    FOREIGN KEY (source_agent_id)
+        REFERENCES ai_agents(agent_id) ON DELETE SET NULL,
 
     FOREIGN KEY (created_by)
         REFERENCES users(user_id) ON DELETE CASCADE,
 
-    FOREIGN KEY (output_ai_id)
-        REFERENCES ai_llms(ai_id) ON DELETE SET NULL
+    FOREIGN KEY (output_model_id)
+        REFERENCES ai_models(model_id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_fine_tuning_jobs_user
@@ -554,12 +960,11 @@ CREATE INDEX IF NOT EXISTS idx_fine_tuning_jobs_status
     ON fine_tuning_jobs(status);
 
 CREATE INDEX IF NOT EXISTS idx_fine_tuning_jobs_base
-    ON fine_tuning_jobs(base_ai_id);
+    ON fine_tuning_jobs(base_model_id);
 
 
 -- ============================================================
--- 14. RESOURCES USED BY A FINE-TUNING JOB
--- Records source resources independently of the actual examples.
+-- 18. RESOURCES USED BY A FINE-TUNING JOB
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS fine_tuning_job_resources (
@@ -583,8 +988,7 @@ CREATE INDEX IF NOT EXISTS idx_fine_tuning_job_resources_resource
 
 
 -- ============================================================
--- 15. DATASETS USED BY A FINE-TUNING JOB
--- A job can use multiple datasets; datasets can be reused.
+-- 19. DATASETS USED BY A FINE-TUNING JOB
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS fine_tuning_job_datasets (

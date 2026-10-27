@@ -1,3 +1,5 @@
+'use strict';
+
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -11,7 +13,12 @@ const {
   RESOURCE_DIR
 } = require('../config/app-config');
 
-const { sqlGet, sqlAll, sqlRun } = require('../db/database');
+const {
+  sqlGet,
+  sqlAll,
+  sqlRun,
+  withTransaction
+} = require('../db/database');
 
 const {
   getEmbeddings,
@@ -358,7 +365,66 @@ async function createResourceItems(resource) {
   );
 }
 
-async function saveResourceIndex(resource, items) {
+function createIndexCancelledError() {
+  const error = new Error(
+    'The indexing job was cancelled or its resource was removed.'
+  );
+
+  error.code = 'RESOURCE_INDEX_CANCELLED';
+  return error;
+}
+
+function createInactiveAgentError() {
+  const error = new Error(
+    'The selected agent is deprecated, its model is unregistered, ' +
+    'or the agent is no longer accessible. The resource index was not saved.'
+  );
+
+  error.code = 'AGENT_NOT_ACTIVE';
+  return error;
+}
+
+async function saveResourceIndex(resource, items, options = {}) {
+  const resourceId = Number(resource.resource_id);
+
+  const processingJobId = options.processingJobId
+    ? Number(options.processingJobId)
+    : null;
+
+  const agentId = options.agentId
+    ? Number(options.agentId)
+    : null;
+
+  const suppliedUserId = options.userId == null
+    ? null
+    : Number(options.userId);
+
+  if (!Number.isSafeInteger(resourceId) || resourceId <= 0) {
+    throw new Error('Invalid resource ID for indexing.');
+  }
+
+  if (
+    processingJobId !== null &&
+    (!Number.isSafeInteger(processingJobId) || processingJobId <= 0)
+  ) {
+    throw new Error('Invalid indexing job ID.');
+  }
+
+  if (
+    agentId !== null &&
+    (!Number.isSafeInteger(agentId) || agentId <= 0)
+  ) {
+    throw new Error('Invalid agent ID for indexing.');
+  }
+
+  if (
+    suppliedUserId !== null &&
+    (!Number.isSafeInteger(suppliedUserId) || suppliedUserId <= 0)
+  ) {
+    throw new Error('Invalid requesting user ID.');
+  }
+
+  // Only text-based items need new embeddings.
   const textItems = items.filter(
     item =>
       item.content_text &&
@@ -368,7 +434,7 @@ async function saveResourceIndex(resource, items) {
 
   const vectorByItemIndex = new Map();
 
-  // Generate embeddings in small batches.
+  // Generate embeddings before taking the database write lock.
   for (
     let index = 0;
     index < textItems.length;
@@ -380,30 +446,155 @@ async function saveResourceIndex(resource, items) {
       batch.map(item => item.content_text)
     );
 
-    batch.forEach((item, vectorIndex) => {
-      vectorByItemIndex.set(
-        item.item_index,
-        vectors[vectorIndex]
+    if (
+      !Array.isArray(vectors) ||
+      vectors.length !== batch.length
+    ) {
+      throw new Error(
+        'The embedding service returned an unexpected number of vectors.'
       );
+    }
+
+    batch.forEach((item, vectorIndex) => {
+      const vector = vectors[vectorIndex];
+
+      if (
+        !Array.isArray(vector) ||
+        vector.length === 0 ||
+        !vector.every(
+          value => typeof value === 'number' && Number.isFinite(value)
+        )
+      ) {
+        throw new Error(
+          `Invalid embedding returned for item ${item.item_index}.`
+        );
+      }
+
+      vectorByItemIndex.set(item.item_index, vector);
     });
+
+    if (typeof options.onProgress === 'function') {
+      const fraction = (index + batch.length) / textItems.length;
+
+      await options.onProgress(
+        35 + Math.round(Math.min(1, fraction) * 50)
+      );
+    }
   }
 
-  await sqlRun('BEGIN IMMEDIATE TRANSACTION');
+  if (
+    textItems.length === 0 &&
+    typeof options.onProgress === 'function'
+  ) {
+    await options.onProgress(85);
+  }
 
-  try {
-    await sqlRun(
-      'DELETE FROM resource_items WHERE resource_id = ?',
-      [resource.resource_id]
+  // All availability checks and index writes occur in one transaction.
+  return withTransaction(async tx => {
+    const currentResource = await tx.get(
+      `SELECT resource_id, user_id
+         FROM data_resources
+        WHERE resource_id = ?`,
+      [resourceId]
     );
 
+    if (!currentResource) {
+      throw createIndexCancelledError();
+    }
+
+    const resourceOwnerId = Number(currentResource.user_id);
+
+    // Indexing jobs must be performed for the resource owner's request.
+    // Do not allow a mismatched user ID to authorize a different resource.
+    if (
+      suppliedUserId !== null &&
+      suppliedUserId !== resourceOwnerId
+    ) {
+      throw new Error(
+        'The requesting user does not own this resource.'
+      );
+    }
+
+    const requesterId = suppliedUserId ?? resourceOwnerId;
+
+    // Confirm that the job still exists, is running, and belongs to
+    // this user and resource before changing any indexed content.
+    if (processingJobId !== null) {
+      const activeJob = await tx.get(
+        `SELECT processing_job_id
+           FROM resource_processing_jobs
+          WHERE processing_job_id = ?
+            AND resource_id = ?
+            AND requested_by = ?
+            AND operation = 'index'
+            AND status = 'running'`,
+        [
+          processingJobId,
+          resourceId,
+          requesterId
+        ]
+      );
+
+      if (!activeJob) {
+        throw createIndexCancelledError();
+      }
+    }
+
+    // CRITICAL: verify that the agent is still active and its underlying
+    // model is registered inside this transaction, immediately before
+    // replacing index data and saving the agent-resource link.
+    if (agentId !== null) {
+      const activeAgent = await tx.get(
+        `SELECT a.agent_id
+           FROM ai_agents a
+           JOIN ai_models m
+             ON m.model_id = a.model_id
+          WHERE a.agent_id = ?
+            AND (a.user_id = ? OR a.is_public = 1)
+            AND a.is_deprecated = 0
+            AND m.is_registered = 1`,
+        [
+          agentId,
+          requesterId
+        ]
+      );
+
+      if (!activeAgent) {
+        throw createInactiveAgentError();
+      }
+    }
+
+    // Delete existing embeddings explicitly before replacing their items.
+    await tx.run(
+      `DELETE FROM resource_embeddings
+        WHERE item_id IN (
+          SELECT item_id
+            FROM resource_items
+           WHERE resource_id = ?
+        )`,
+      [resourceId]
+    );
+
+    await tx.run(
+      'DELETE FROM resource_items WHERE resource_id = ?',
+      [resourceId]
+    );
+
+    // Insert the new resource items and their embeddings.
     for (const item of items) {
-      const inserted = await sqlRun(
+      const inserted = await tx.run(
         `INSERT INTO resource_items
-           (resource_id, item_index, item_type, content_text,
-            structured_json, metadata_json)
+           (
+             resource_id,
+             item_index,
+             item_type,
+             content_text,
+             structured_json,
+             metadata_json
+           )
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
-          resource.resource_id,
+          resourceId,
           item.item_index,
           item.item_type,
           item.content_text,
@@ -423,10 +614,15 @@ async function saveResourceIndex(resource, items) {
         : (vector ? EMBEDDING_MODEL : null);
 
       if (vector && embeddingModel) {
-        await sqlRun(
+        await tx.run(
           `INSERT INTO resource_embeddings
-             (item_id, embedding_model, dimensions,
-              embedding_json, is_imported)
+             (
+               item_id,
+               embedding_model,
+               dimensions,
+               embedding_json,
+               is_imported
+             )
            VALUES (?, ?, ?, ?, ?)`,
           [
             inserted.lastID,
@@ -439,23 +635,66 @@ async function saveResourceIndex(resource, items) {
       }
     }
 
-    await sqlRun(
-      `UPDATE data_resources
-          SET processing_status = 'ready'
-        WHERE resource_id = ?`,
-      [resource.resource_id]
-    );
-
-    await sqlRun('COMMIT');
-  } catch (err) {
-    try {
-      await sqlRun('ROLLBACK');
-    } catch {
-      // Preserve the original error.
+    // Only create/reactivate the link after the active-agent check.
+    if (agentId !== null) {
+      await tx.run(
+        `INSERT INTO agent_resource_links
+           (agent_id, resource_id, user_id, is_enabled)
+         VALUES (?, ?, ?, 1)
+         ON CONFLICT(agent_id, resource_id, user_id)
+         DO UPDATE SET is_enabled = 1`,
+        [
+          agentId,
+          resourceId,
+          requesterId
+        ]
+      );
     }
 
-    throw err;
-  }
+    const updated = await tx.run(
+      `UPDATE data_resources
+          SET processing_status = 'ready'
+        WHERE resource_id = ?
+          AND user_id = ?`,
+      [
+        resourceId,
+        requesterId
+      ]
+    );
+
+    if (updated.changes !== 1) {
+      throw createIndexCancelledError();
+    }
+
+    // Mark the job complete in the same transaction as the index write.
+    if (processingJobId !== null) {
+      const completed = await tx.run(
+        `UPDATE resource_processing_jobs
+            SET status = 'done',
+                progress_percent = 100,
+                completed_at = CURRENT_TIMESTAMP,
+                error_message = NULL
+          WHERE processing_job_id = ?
+            AND resource_id = ?
+            AND requested_by = ?
+            AND status = 'running'`,
+        [
+          processingJobId,
+          resourceId,
+          requesterId
+        ]
+      );
+
+      if (completed.changes !== 1) {
+        throw createIndexCancelledError();
+      }
+    }
+
+    return {
+      resourceId,
+      itemsIndexed: items.length
+    };
+  });
 }
 
 async function resolveAuthorId(authorId, authorName) {

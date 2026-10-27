@@ -5,6 +5,7 @@ const path = require('path');
 const requireUser = require('../middleware/requireUser');
 const { PROJECT_ROOT } = require('../config/app-config');
 const { sqlAll, sqlRun } = require('../db/database');
+const { deleteResource, unindexResource } = require('../services/resource.service');
 
 const {
   uploadResource,
@@ -31,14 +32,63 @@ const router = express.Router();
 */
 
 router.get('/resources', requireUser, async (req, res, next) => {
+  const userId = req.session.user.id;
+
   const message = req.session.message || null;
   req.session.message = null;
 
   try {
-    const formData = await loadFormData();
+    const [formData, rows] = await Promise.all([
+      loadFormData(),
+
+      sqlAll(
+        `SELECT
+            dr.*,
+            DATE(dr.date_added) AS date_added,
+            u.username AS uploader,
+            so.source_name,
+            so.source_url,
+
+            (
+              SELECT group_concat(a.author_name, ', ')
+                FROM resource_authors ra
+                JOIN authors a
+                  ON a.author_id = ra.author_id
+               WHERE ra.resource_id = dr.resource_id
+            ) AS author_name,
+
+            (
+              SELECT group_concat(s.subject_name, ', ')
+                FROM resource_subjects rs
+                JOIN subjects s
+                  ON s.subject_id = rs.subject_id
+               WHERE rs.resource_id = dr.resource_id
+            ) AS subject_name
+
+         FROM data_resources dr
+
+         JOIN users u
+           ON u.user_id = dr.user_id
+
+         LEFT JOIN sources so
+           ON so.source_id = dr.source_id
+
+         WHERE dr.user_id = ?
+            OR dr.is_public = 1
+
+         ORDER BY
+           CASE WHEN dr.user_id = ? THEN 0 ELSE 1 END,
+           dr.date_added DESC,
+           dr.resource_id DESC`,
+        [userId, userId]
+      )
+    ]);
+
+    const results = rows.map(mapResourceForTemplate);
 
     return res.render('resources', {
-      results: null,
+      results,
+      currentUserId: userId,
       message,
       ...formData,
       selectedAuthor: '',
@@ -282,6 +332,112 @@ router.post(
 
 /*
 |--------------------------------------------------------------------------
+| POST /resources/:id/unindex
+|--------------------------------------------------------------------------
+| Remove indexed content while preserving the uploaded file and metadata.
+*/
+
+router.post(
+  '/resources/:id/unindex',
+  requireUser,
+  async (req, res) => {
+    const resourceId = Number(req.params.id);
+    const userId = req.session.user.id;
+
+    if (
+      !Number.isSafeInteger(resourceId) ||
+      resourceId <= 0
+    ) {
+      req.session.message = 'Invalid resource.';
+      return res.redirect('/resources');
+    }
+
+    try {
+      const result = await unindexResource({
+        resourceId,
+        userId
+      });
+
+      req.session.message =
+        `Resource "${result.title}" was unindexed successfully. ` +
+        'The uploaded file and metadata have been preserved.';
+    } catch (err) {
+      console.error('Resource unindexing error:', err);
+
+      if (err.status && err.status < 500) {
+        req.session.message = err.message;
+      } else {
+        req.session.message =
+          'Could not unindex the resource. Check the server logs.';
+      }
+    }
+
+    return res.redirect('/resources');
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| POST /resources/:id/delete
+|--------------------------------------------------------------------------
+| Delete a resource owned by the authenticated user.
+*/
+
+router.post(
+  '/resources/:id/delete',
+  requireUser,
+  async (req, res) => {
+    const resourceId = Number(req.params.id);
+    const userId = req.session.user.id;
+
+    if (
+      !Number.isSafeInteger(resourceId) ||
+      resourceId <= 0
+    ) {
+      req.session.message = 'Invalid resource.';
+      return res.redirect('/resources');
+    }
+
+    try {
+      const result = await deleteResource({
+        resourceId,
+        userId
+      });
+
+      if (result.warning) {
+        console.warn(result.warning);
+
+        req.session.message =
+          `Resource "${result.title}" was deleted from the database, ` +
+          'but its file could not be removed. Check the server logs.';
+      } else {
+        req.session.message =
+          `Resource "${result.title}" and its indexed data were deleted successfully.`;
+      }
+
+      return res.redirect('/resources');
+    } catch (err) {
+      console.error('Resource deletion error:', err);
+
+      if (err.status && err.status < 500) {
+        req.session.message = err.message;
+      } else if (
+        err.code === 'RESOURCE_DELETE_RESTRICTED'
+      ) {
+        req.session.message =
+          'This resource is still referenced by another record and cannot be deleted.';
+      } else {
+        req.session.message =
+          'Could not delete the resource. Check the server logs.';
+      }
+
+      return res.redirect('/resources');
+    }
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
 | GET /resource/:id/download
 |--------------------------------------------------------------------------
 | Download a resource only if the user owns it or it is public.
@@ -471,6 +627,7 @@ router.get('/search', requireUser, async (req, res, next) => {
 
     return res.render('resources', {
       results,
+      currentUserId: userId,
       message: null,
       ...formData,
       selectedAuthor: authorId,

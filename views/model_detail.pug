@@ -5,45 +5,70 @@ block styles
 
 block content
   p.breadcrumbs
-    a(href='/ai_model') Model Hub
-    span  / Model settings
+    a(href='/ai_model') AI Model Hub
+    span  / Agent settings
 
   header.page-heading
-    p.eyebrow MODEL CONFIGURATION
+    p.eyebrow AGENT CONFIGURATION
     h1= model.name
-    p.lead Configure this model's behavior and the resources available to your conversations.
+    p.lead
+      | Customize this agent's personality, welcome message, runtime
+      | preference, and the resources available to its conversations.
+      | The underlying model can be shared by multiple agents.
 
   if message
     p.notice(role='status' aria-live='polite')= message
 
+  // ============================================================
+  // AGENT AND UNDERLYING MODEL SUMMARY
+  // ============================================================
+
   section.panel.model-summary
     .model-summary-main
-      span.model-provider= model.provider || 'ollama'
+      span.model-provider= model.provider || 'Model provider varies by deployment'
       h2= model.name
-      p.model-reference= model.model_ref
-      p= model.description || 'No description provided.'
+      p= model.description || 'No agent description provided.'
+
+      p.model-reference
+        | Underlying model:
+        | #{model.model_name || model.model_key || 'Unknown model'}
+
+      p.model-reference
+        | Model identifier:
+        | #{model.model_key || 'Not specified'}
 
     .model-summary-meta
-      span.visibility(class=model.is_public ? 'public' : 'private')= model.is_public ? 'Public' : 'Private'
+      span.visibility(class=model.is_public ? 'public' : 'private')= model.is_public ? 'Public agent' : 'Private agent'
       p.muted Owner: #{model.owner_username || 'Unknown'}
+      p.muted
+        | Preferred runtime:
+        | #{model.preferred_runtime_location || 'device_local'}
 
-  // Only the model owner can change its model-level settings.
+      if model.model_origin === 'fine_tuned'
+        p.muted Fine-tuned model
+
+  // ============================================================
+  // AGENT SETTINGS
+  // ============================================================
+
   if isOwner
     section.panel
       .panel-heading
         div
           p.eyebrow PERSONALITY
-          h2 Model behavior and welcome message
+          h2 Agent behavior and welcome message
           p.muted
-            | These settings customize your model's behavior at runtime.
-            | They do not change the underlying model weights.
+            | These settings customize this agent's behavior at inference
+            | time. They do not modify the underlying model weights.
+            | You can create other agents from the same model with
+            | different personalities.
 
       form#model-settings-form(
-        action='/models/' + model.ai_id + '/settings'
+        action='/models/' + model.agent_id + '/settings'
         method='post'
       )
         label.field(for='model-name')
-          span Display name
+          span Agent name
           input#model-name(
             type='text'
             name='name'
@@ -53,12 +78,12 @@ block content
           )
 
         label.field(for='model-description')
-          span Description
+          span Agent description
           textarea#model-description(
             name='description'
             rows='3'
             maxlength='2000'
-            placeholder='Describe this model.'
+            placeholder='Describe this agent and what it helps with.'
           )= model.description || ''
 
         label.field(for='personality-prompt')
@@ -67,23 +92,48 @@ block content
             name='personality_prompt'
             rows='7'
             maxlength='12000'
-            placeholder='Define tone, role, boundaries, and response preferences for this model.'
+            placeholder='Define the agent role, tone, boundaries, and response preferences.'
           )= model.personality_prompt || ''
           small.form-help
-            | Instructions sent to the model as part of its system message.
+            | Instructions sent to the language model as part of its system message.
             | #[span#personality-count 0 characters]
 
         label.field(for='welcome-prompt')
-          span Unique welcome message
+          span Welcome message
           textarea#welcome-prompt(
             name='welcome_message'
             rows='3'
             maxlength='2000'
-            placeholder='Write a unique greeting for this model.'
+            placeholder='Write a greeting displayed when this agent is selected.'
           )= model.welcome_message || ''
           small.form-help
-            | Displayed in the chat interface when this model is selected.
+            | Displayed in the chat interface when this agent is selected.
             | #[span#welcome-count 0 characters]
+
+        label.field(for='preferred-runtime')
+          span Preferred runtime
+          select#preferred-runtime(
+            name='preferred_runtime_location'
+            required
+          )
+            option(
+              value='device_local'
+              selected=model.preferred_runtime_location === 'device_local'
+            ) User's device (default)
+            option(
+              value='server'
+              selected=model.preferred_runtime_location === 'server'
+            ) Application server
+            option(
+              value='hosted'
+              disabled
+              selected=model.preferred_runtime_location === 'hosted'
+            ) Hosted provider (coming later)
+
+          small.form-help
+            | Device-local execution requires a compatible runtime and model
+            | on the user's device. Server execution requires an enabled
+            | deployment for the underlying model.
 
         label.checkbox-label(for='model-detail-public')
           input#model-detail-public(
@@ -93,37 +143,43 @@ block content
             checked=Boolean(model.is_public)
           )
           span
-            strong Make this model registration public
-            small Other signed-in users can discover and access this model if it is available to them.
+            strong Make this agent public
+            small
+              | Other signed-in users can discover this agent. Public visibility
+              | does not automatically make private model artifacts or resources public.
 
         .form-actions
-          button(type='submit') Save model settings
+          button(type='submit') Save agent settings
           a.button.secondary(href='/chat') Open chat
 
   else
     section.panel
       .panel-heading
         div
-          p.eyebrow MODEL SETTINGS
+          p.eyebrow AGENT SETTINGS
           h2 Owner-managed configuration
           p.muted
-            | Only the model owner can edit its personality instructions,
-            | welcome message, description, and visibility.
-      a.button.secondary(href='/chat') Chat with this model
+            | Only the agent owner can edit its personality, greeting,
+            | description, runtime preference, and visibility.
 
-  // Resource links belong to the current user's account, not exclusively
-  // to the model owner. The route still checks access to every resource.
+      a.button.secondary(href='/chat') Chat with this agent
+
+  // ============================================================
+  // RESOURCES LINKED TO THIS AGENT
+  // ============================================================
+
   section.panel
     .panel-heading
       div
         p.eyebrow KNOWLEDGE
         h2 Resources linked for your account
         p.muted
-          | Choose ready resources you can access. These links determine
-          | which indexed content can be retrieved during your conversations.
+          | Choose ready resources you can access. These links belong
+          | to this agent rather than the underlying model, so other
+          | agents using the same model can have different resources.
 
     form(
-      action='/models/' + model.ai_id + '/resources'
+      action='/models/' + model.agent_id + '/resources'
       method='post'
     )
       if availableResources.length
@@ -144,13 +200,53 @@ block content
                   |  · #{resource.is_public ? 'Public resource' : 'Your resource'}
 
         .form-actions
-          button(type='submit') Save resource links
+          button(type='submit') Save agent resource links
 
       else
         .empty-state
           h3 No ready resources available
-          p Upload and index a resource before linking it to this model.
+          p
+            | Upload and index a resource before linking it to this agent.
           a.button.secondary(href='/resources') Open resource library
+
+  // ============================================================
+  // RELATED MODEL INFORMATION
+  // ============================================================
+
+  section.panel
+    .panel-heading
+      div
+        p.eyebrow UNDERLYING MODEL
+        h2 Shared model configuration
+        p.muted
+          | This agent uses a model that may also be used by other agents.
+          | Model registration and deployment management are separate
+          | from agent personality settings.
+
+    p
+      strong Model:
+      |  #{model.model_name || model.model_key || 'Unknown'}
+
+    if model.model_format
+      p
+        strong Format:
+        |  #{model.model_format}
+
+    if model.model_version
+      p
+        strong Version:
+        |  #{model.model_version}
+
+    if model.model_description
+      p= model.model_description
+
+    p.muted
+      | Changing the underlying model or its deployment may affect every
+      | agent that uses it. Personality and resource-link changes affect
+      | this agent's configuration instead.
+
+    .form-actions
+      a.button.secondary(href='/ai_model') Back to Model Hub
 
 block scripts
   script(src='/model_detail.js' defer)

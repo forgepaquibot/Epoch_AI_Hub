@@ -6,27 +6,45 @@ block styles
 block content
   header.page-heading
     p.eyebrow CONVERSATIONS
-    h1 Chat with a model
+    h1 Chat with an agent
     p.lead
-      | Chat with an accessible Ollama model and retrieve relevant
-      | excerpts from resources linked to your account.
+      | Choose an agent and decide where its model should run.
+      | Device-local inference is the default when the model is supported.
 
   if message
     p.notice(role='status' aria-live='polite')= message
 
   section.chat-workspace
     .chat-controls.panel
-      if models.length
+      if agents.length
         form#chat-form
-          label.field(for='ai_id')
-            span Model
-            select#ai_id(name='ai_id' required)
-              option(value='') Choose a model
-              each model in models
+          label.field(for='agent_id')
+            span Agent
+            select#agent_id(name='agent_id' required)
+              option(value='') Choose an agent
+              each agent in agents
                 option(
-                  value=model.ai_id
-                  data-welcome-message=model.welcome_message || ''
-                )= model.name + ' — ' + model.owner_username
+                  value=agent.agent_id
+                  data-welcome-message=agent.welcome_message || ''
+                  data-personality-prompt=agent.personality_prompt || ''
+                  data-agent-description=agent.description || ''
+                  data-model-key=agent.model_key || ''
+                  data-model-metadata=agent.model_metadata_json || ''
+                  data-preferred-runtime=agent.preferred_runtime_location || 'device_local'
+                )= agent.name + ' — ' + agent.model_name + ' · ' + agent.owner_username
+
+          label.field(for='runtime_location')
+            span Where should the model run?
+            select#runtime_location(name='runtime_location' required)
+              option(value='device_local' selected) My device (default)
+              option(value='server') Application server
+              option(value='hosted' disabled) Hosted provider (coming later)
+
+          p#runtime-status.form-status(
+            role='status'
+            aria-live='polite'
+            aria-atomic='true'
+          ) Choose an agent to check its runtime configuration.
 
           label.field(for='session_id')
             span Conversation
@@ -35,11 +53,13 @@ block content
               each session in sessions
                 option(
                   value=session.session_id
-                  data-ai-id=session.ai_id
+                  data-agent-id=session.agent_id
+                  data-ai-id=session.agent_id
+                  data-runtime-location=session.runtime_location
                 )= (session.title || 'Conversation') + ' · ' + (session.updated_at || '')
 
           section#welcome-panel.welcome-panel(hidden aria-live='polite')
-            p.eyebrow MODEL WELCOME
+            p.eyebrow AGENT WELCOME
             p#welcome-text
 
           label.field(for='prompt')
@@ -53,16 +73,26 @@ block content
             )
 
           .form-actions
-            button#send-message(type='submit') Send message
+            button#send-message(
+              type='submit'
+              data-action='send'
+              aria-label='Send message'
+              aria-busy='false'
+            ) Send message
+
             p#chat-status.form-status(
-              role='status' 
+              role='status'
               aria-live='polite'
               aria-atomic='true'
             )
+
       else
         .empty-state
-          h2 No chat models available
-          p Register an installed Ollama chat model first.
+          h2 No active chat agents available
+          p
+            | Register a model and create an agent in the Model Hub
+            | to start a conversation. Deprecated agents remain in
+            | the Model Hub until you delete them.
           a.button(href='/ai_model') Open Model Hub
 
     section.panel.chat-output
@@ -78,7 +108,7 @@ block content
           p#sources-text.muted
 
       p#chat-empty.empty-copy
-        | Select a model and send a message to see its response here.
+        | Select an agent and send a message to see its response here.
 
   section.panel
     .panel-heading
@@ -92,15 +122,26 @@ block content
           article.conversation-item
             div
               strong= session.title || 'Untitled conversation'
+              p.muted= session.agent_name || 'Agent'
               p.muted= session.updated_at || ''
+
             button.button.secondary(
               type='button'
               data-load-session=session.session_id
-              data-ai-id=session.ai_id
+              data-agent-id=session.agent_id
+              data-ai-id=session.agent_id
+              data-runtime-location=session.runtime_location
             ) Continue
+
+            form(
+              action='/chat/sessions/' + session.session_id + '/delete'
+              method='post'
+              onsubmit="return confirm('Delete this conversation and all its messages? This cannot be undone.');"
+            )
+              button.button.secondary(type='submit') Delete
     else
       p.empty-copy
         | Your saved conversations will appear here after your first message.
 
 block scripts
-  script(src='/chat.js' defer)
+  script(type='module' src='/chat.js' defer)

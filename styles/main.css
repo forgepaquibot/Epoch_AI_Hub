@@ -703,3 +703,143 @@ tbody tr:hover {
     transition: none !important;
   }
 }
+
+/* =========================================================
+   GLOBAL RESOURCE INDEXING PANEL
+   ========================================================= */
+
+[hidden] {
+  display: none !important;
+}
+
+.resource-jobs-panel {
+  width: min(1100px, calc(100% - 2rem));
+  margin: 1rem auto;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border-color, #dbe2ea);
+  border-radius: 12px;
+  background: var(--panel-background, #ffffff);
+}
+
+.resource-jobs-panel h2 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.resource-jobs-description {
+  margin-bottom: 1rem;
+  color: var(--muted-color, #64748b);
+}
+
+.resource-jobs-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resource-job-item {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-color, #dbe2ea);
+  border-radius: 8px;
+}
+
+.resource-job-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.resource-job-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Actual progress meter created by JavaScript */
+
+.resource-job-progress-meter {
+  display: block;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  margin-top: 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.resource-job-progress-meter::-webkit-progress-bar {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+
+.resource-job-progress-meter::-webkit-progress-value {
+  background: #4779d1;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.resource-job-progress-meter::-moz-progress-bar {
+  background: #4779d1;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+/* Percentage displayed underneath the progress meter */
+
+.resource-job-progress {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  color: var(--muted-color, #64748b);
+}
+
+.resource-job-meta {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  color: var(--muted-color, #64748b);
+}
+
+.resource-job-error {
+  margin: 0.5rem 0;
+  color: #991b1b;
+  overflow-wrap: anywhere;
+}
+
+/* Status labels used by the global panel and history table */
+
+.status {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-pending {
+  color: #854d0e;
+  background: #fef3c7;
+}
+
+.status-running {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.status-done {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.status-failed {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.status-cancelled {
+  color: #475569;
+  background: #e2e8f0;
+}

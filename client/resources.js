@@ -12,32 +12,51 @@ document.addEventListener('DOMContentLoaded', () => {
     '.pdf', '.txt', '.md', '.csv', '.json', '.jsonl', '.docx'
   ]);
 
-  // Search form feedback and scroll-position restoration.
+  // ============================================================
+  // SEARCH FORM FEEDBACK AND LOADING-STATE MANAGEMENT
+  // ============================================================
+
   const searchForm = document.querySelector('#resource-search-form');
   const searchButton = document.querySelector('#search-submit-button');
   const searchStatus = document.querySelector('#search-status');
 
-  const searchScrollKey = 'ai-model-hub-resource-search-scroll-y';
+  const originalSearchButtonText =
+    searchButton?.textContent.trim() || 'Search resources';
 
-  // Restore the user's previous position after the /search page loads.
-  if (window.location.pathname === '/search') {
-    const savedScrollY = sessionStorage.getItem(searchScrollKey);
+  // Create a hidden field so repeated searches, including empty
+  // searches, produce unique URLs.
+  let searchAttemptInput = searchForm?.querySelector(
+    'input[name="_searchAttempt"]'
+  );
 
-    if (savedScrollY !== null) {
-      sessionStorage.removeItem(searchScrollKey);
-
-      requestAnimationFrame(() => {
-        window.scrollTo(0, Number(savedScrollY) || 0);
-      });
-    }
+  if (searchForm && !searchAttemptInput) {
+    searchAttemptInput = document.createElement('input');
+    searchAttemptInput.type = 'hidden';
+    searchAttemptInput.name = '_searchAttempt';
+    searchForm.appendChild(searchAttemptInput);
   }
 
-  // Show immediate feedback when a search is submitted.
+  // Reset the loading state whenever the page is displayed again,
+  // including when returning through browser history.
+  window.addEventListener('pageshow', () => {
+    if (searchButton) {
+      searchButton.disabled = false;
+      searchButton.textContent = originalSearchButtonText;
+      searchButton.removeAttribute('aria-busy');
+    }
+
+    if (searchStatus) {
+      searchStatus.textContent = '';
+      searchStatus.classList.remove('is-searching');
+    }
+  });
+
+  // Show feedback while the search request is being submitted.
   searchForm?.addEventListener('submit', () => {
-    try {
-      sessionStorage.setItem(searchScrollKey, String(window.scrollY));
-    } catch (err) {
-      console.warn('Could not save search scroll position:', err);
+    // Generate a new value for every submission.
+    if (searchAttemptInput) {
+      searchAttemptInput.value =
+        `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     }
 
     if (searchButton) {
@@ -51,6 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
       searchStatus.classList.add('is-searching');
     }
   });
+
+  // ============================================================
+  // RESOURCE UPLOAD VALIDATION
+  // ============================================================
 
   function extensionOf(name) {
     const dot = name.lastIndexOf('.');
@@ -70,13 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
       pagesInput.value = '';
     }
 
-    pagesInput.placeholder = selectedPdf()
-      ? 'Optional'
-      : 'PDF only';
+    pagesInput.placeholder = selectedPdf() ? 'Optional' : 'PDF only';
   }
 
   function showStatus(message) {
-    if (status) status.textContent = message;
+    if (status) {
+      status.textContent = message;
+    }
   }
 
   fileInput?.addEventListener('change', () => {
@@ -84,12 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
     showStatus('');
 
     const file = fileInput.files?.[0];
+
     if (!file) return;
 
     if (!allowed.has(extensionOf(file.name))) {
       showStatus(
         'Unsupported format. Choose PDF, TXT, MD, CSV, DOCX, JSON, or JSONL.'
       );
+
       fileInput.value = '';
       updatePages();
       return;
@@ -145,6 +170,10 @@ document.addEventListener('DOMContentLoaded', () => {
     showStatus('Uploading resource. Please keep this page open.');
   });
 
+  // ============================================================
+  // RESOURCE METADATA INPUTS
+  // ============================================================
+
   // Keep existing metadata selections and free-text alternatives distinct.
   for (const [selectSelector, textSelector] of [
     ['#author_id', '#author_name'],
@@ -157,11 +186,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!select || !text) continue;
 
     select.addEventListener('change', () => {
-      if (select.value) text.value = '';
+      if (select.value) {
+        text.value = '';
+      }
     });
 
     text.addEventListener('input', () => {
-      if (text.value.trim()) select.value = '';
+      if (text.value.trim()) {
+        select.value = '';
+      }
     });
   }
 });

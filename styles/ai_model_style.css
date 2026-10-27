@@ -31,15 +31,120 @@
   font-size: .82rem;
 }
 
-.model-card .card-actions {
-  margin-top: auto;
-  padding-top: .8rem;
-}
+/* ============================================================
+   GENERAL CARD BUTTONS
+   ============================================================ */
 
 .model-card .button {
   font-size: .83rem;
   padding: .6rem .75rem;
 }
+
+/* ============================================================
+   UNREGISTER MODEL BUTTON
+   Uses the default button appearance.
+   Aligns alone at the bottom-right of the model card.
+   ============================================================ */
+
+.model-card .model-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  margin-top: auto;
+  padding-top: .8rem;
+}
+
+.model-card .model-card-actions button.button.secondary.unregister-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+
+  transition:
+    background-color .15s ease,
+    border-color .15s ease,
+    color .15s ease;
+}
+
+.model-card .model-card-actions button.button.secondary.unregister-button img {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.model-card .model-card-actions button.button.secondary.unregister-button:hover,
+.model-card .model-card-actions button.button.secondary.unregister-button:focus-visible {
+  background-color: darkorange;
+  border-color: darkorange;
+  color: white;
+}
+
+/* ============================================================
+   AGENT CARD ACTIONS
+   Settings and Chat stay on the left.
+   Delete is pushed to the right.
+   ============================================================ */
+
+.model-card .card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  width: 100%;
+  margin-top: auto;
+  padding-top: .8rem;
+}
+
+.agent-delete-form {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  margin: 0 0 0 auto;
+}
+
+/* Delete button: uses the default button appearance */
+
+.model-card .card-actions button.agent-delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  min-height: 36px;
+  padding: .5rem .75rem;
+  margin: 0;
+  cursor: pointer;
+
+  transition:
+    background-color .15s ease,
+    border-color .15s ease,
+    color .15s ease;
+}
+
+.model-card .card-actions button.agent-delete-button img {
+  display: block;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.model-card .card-actions button.agent-delete-button:hover,
+.model-card .card-actions button.agent-delete-button:focus-visible {
+  background-color: crimson;
+  border-color: crimson;
+  color: white;
+}
+
+/* ============================================================
+   GENERAL PANEL HEADINGS
+   ============================================================ */
 
 .panel > h3 {
   margin: 1.4rem 0 .7rem;
@@ -52,6 +157,34 @@
 .model-card .card-topline .visibility {
   white-space: nowrap;
 }
+
+/* Indexing history controls */
+.job-history-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 .75rem;
+}
+
+.job-history-actions .clear-history-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.job-history-actions .clear-history-button img {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+/* ============================================================
+   RESPONSIVE LAYOUT
+   ============================================================ */
 
 @media (max-width: 900px) {
   .model-grid {

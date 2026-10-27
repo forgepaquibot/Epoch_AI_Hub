@@ -14,10 +14,12 @@ block content
       span.stat-label Accessible resources
       strong.stat-number= resourceCounts.total || 0
       span.stat-foot Including public resources
+
     article.stat-card
       span.stat-label Accessible models
       strong.stat-number= modelCounts.total || 0
       span.stat-foot Registered in this hub
+
     article.stat-card
       span.stat-label Conversations
       strong.stat-number= chatCounts.total || 0
@@ -30,12 +32,14 @@ block content
         strong Manage resources
         small Upload, search, and share information
       span.action-arrow →
+
     a.action-card(href='/ai_model')
       span.action-icon M
       span
         strong Manage models
         small Register models and index resources
       span.action-arrow →
+
     a.action-card(href='/chat')
       span.action-icon C
       span
@@ -49,11 +53,12 @@ block content
         div
           p.eyebrow YOUR LIBRARY
           h2 Recent resources
-        a.text-link(href='/resources') View all
+        a.text-link(href='/resources#resource-results') View all
+
       if recentResources.length
         .compact-list
           each item in recentResources
-            a.compact-item(href='/resources')
+            a.compact-item(href=`/resources#${item.resource_id}`)
               span.file-chip= (item.resource_type || 'FILE').toUpperCase()
               span.compact-main
                 strong= item.title
@@ -69,6 +74,7 @@ block content
           p.eyebrow CHAT HISTORY
           h2 Recent conversations
         a.text-link(href='/chat') Open chat
+
       if recentChats.length
         .compact-list
           each item in recentChats
@@ -82,21 +88,30 @@ block content
         p.empty-copy Your recent chats will appear here after your first message.
         a.button.secondary(href='/chat') Start chatting
 
+  // ============================================================
+  // RECENT RESOURCE INDEXING JOBS
+  // ============================================================
+
   section.panel
     .panel-heading
       div
         p.eyebrow PROCESSING
         h2 Recent indexing jobs
-    if recentJobs.length
-      .table-wrap
-        table
-          thead
-            tr
-              th Resource
-              th Operation
-              th Status
-              th Progress
-          tbody
+        p.muted
+          | Job statuses and progress update automatically.
+
+    .table-wrap
+      table
+        thead
+          tr
+            th Resource
+            th Operation
+            th Status
+            th Progress
+            th Started
+
+        tbody#resource-processing-history-body
+          if recentJobs.length
             each job in recentJobs
               tr
                 td= job.resource_title
@@ -104,5 +119,8 @@ block content
                 td
                   span.status(class='status-' + job.status)= job.status
                 td= (job.progress_percent || 0) + '%'
-    else
-      p.empty-copy No resource-indexing jobs have been submitted.
+                td= job.started_at || job.created_at || '—'
+
+    p#resource-processing-history-empty.empty-copy(
+      hidden=recentJobs.length > 0
+    ) No resource-indexing jobs have been submitted.

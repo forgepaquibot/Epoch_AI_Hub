@@ -1,5 +1,9 @@
 const path = require('path');
 
+// ============================================================
+// PROJECT PATHS
+// ============================================================
+
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 
 const PORT = Number(process.env.PORT || 3005);
@@ -32,19 +36,40 @@ const STORAGE_DIR = path.join(
   'storage'
 );
 
-const OLLAMA_BASE_URL = (
+
+// ============================================================
+// OLLAMA CONFIGURATION
+//
+// Keep Ollama as one supported provider.
+// Other providers will be configured through the provider
+// abstraction and model registry, not hardcoded here.
+// ============================================================
+
+const OLLAMA_BASE_URL = String(
   process.env.OLLAMA_BASE_URL ||
   'http://127.0.0.1:11434'
-).replace(/\/+$/, '');
+)
+  .trim()
+  .replace(/\/+$/, '');
 
 const EMBEDDING_MODEL =
   process.env.OLLAMA_EMBEDDING_MODEL ||
   'qwen3-embedding:0.6b';
 
+
+// ============================================================
+// SESSION CONFIGURATION
+// ============================================================
+
 const SESSION_SECRET =
   process.env.SESSION_SECRET ||
   process.env.AUTH0_SECRET ||
   '';
+
+
+// ============================================================
+// EXPORTS
+// ============================================================
 
 module.exports = {
   PROJECT_ROOT,

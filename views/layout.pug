@@ -24,8 +24,10 @@ html(lang='en')
         else if auth0Configured
           a(href='/login') Log in
           a.nav-signup(href='/signup') Create account
+    include partials/resource-processing-panel.pug
     main.page-container
       block content
     footer.site-footer
       p AI Model Hub · Ollama inference, resource-based RAG, and model customization
+    script(src='/resource-processing-status.js' defer)
     block scripts
