@@ -4,7 +4,14 @@ block styles
   link(rel='stylesheet' href='/chat_style.css')
 
 block content
-  header.page-heading
+  // ============================================================
+  // CHAT OVERVIEW
+  // ============================================================
+
+  header.page-heading#chat-overview(
+    data-progress-section
+    data-progress-label='Overview'
+  )
     p.eyebrow CONVERSATIONS
     h1 Chat with an agent
     p.lead
@@ -14,8 +21,19 @@ block content
   if message
     p.notice(role='status' aria-live='polite')= message
 
+  // ============================================================
+  // CHAT WORKSPACE
+  // ============================================================
+
   section.chat-workspace
-    .chat-controls.panel
+    // ==========================================================
+    // CHAT CONTROLS
+    // ==========================================================
+
+    section.chat-controls.panel#chat-controls-section(
+      data-progress-section
+      data-progress-label='Chat'
+    )
       if agents.length
         form#chat-form
           label.field(for='agent_id')
@@ -95,7 +113,11 @@ block content
             | the Model Hub until you delete them.
           a.button(href='/ai_model') Open Model Hub
 
-    section.panel.chat-output
+    // ==========================================================
+    // CHAT RESPONSE
+    // ==========================================================
+
+    section.panel.chat-output#chat-response-section
       .panel-heading
         div
           p.eyebrow RESPONSE
@@ -110,7 +132,14 @@ block content
       p#chat-empty.empty-copy
         | Select an agent and send a message to see its response here.
 
-  section.panel
+  // ============================================================
+  // CONVERSATION HISTORY
+  // ============================================================
+
+  section.panel#conversation-history-section(
+    data-progress-section
+    data-progress-label='History'
+  )
     .panel-heading
       div
         p.eyebrow HISTORY

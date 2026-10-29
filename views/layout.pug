@@ -3,31 +3,100 @@ html(lang='en')
   head
     meta(charset='utf-8')
     meta(name='viewport' content='width=device-width, initial-scale=1')
-    meta(name='theme-color' content='#f3f6fb')
-    title= (typeof title !== 'undefined' && title) ? `${title} | AI Model Hub` : 'AI Model Hub'
+    meta(name='theme-color' content='#080909')
+    meta(name='color-scheme' content='dark')
+
+    title= (typeof title !== 'undefined' && title) ? `${title} | Epoch` : 'Epoch | AI Hub'
+
     link(rel='stylesheet' href='/main.css')
+    link(rel='stylesheet' href='/page-progress_style.css')
     block styles
+
   body
     header.site-header
-      a.brand(href=currentUser ? '/dashboard' : '/')
-        span.brand-mark AI
-        span.brand-name AI Model Hub
+      a.brand(href='/' aria-label='Epoch home')
+        img.brand-logo(src='/Logo1.png' alt='')
+        span.brand-name Epoch
+
       nav.main-nav(aria-label='Main navigation')
         if currentUser
-          a(class=currentPath === '/dashboard' ? 'active' : '' href='/dashboard' aria-current=currentPath === '/dashboard' ? 'page' : false) Dashboard
-          a(class=currentPath.startsWith('/resources') ? 'active' : '' href='/resources' aria-current=currentPath.startsWith('/resources') ? 'page' : false) Resources
-          a(class=currentPath.startsWith('/ai_model') || currentPath.startsWith('/models/') ? 'active' : '' href='/ai_model') Models
-          a(class=currentPath.startsWith('/chat') ? 'active' : '' href='/chat') Chat
-          a(class=currentPath.startsWith('/training') ? 'active' : '' href='/training') Fine-tuning
-          a(class=currentPath.startsWith('/profile') ? 'active' : '' href='/profile') Profile
+          a(
+            class=currentPath === '/dashboard' ? 'active' : ''
+            href='/dashboard'
+            aria-current=currentPath === '/dashboard' ? 'page' : false
+          ) Dashboard
+
+          a(
+            class=currentPath.startsWith('/resources') ? 'active' : ''
+            href='/resources'
+            aria-current=currentPath.startsWith('/resources') ? 'page' : false
+          ) Resources
+
+          a(
+            class=currentPath.startsWith('/ai_model') || currentPath.startsWith('/models/') ? 'active' : ''
+            href='/ai_model'
+            aria-current=currentPath.startsWith('/ai_model') || currentPath.startsWith('/models/') ? 'page' : false
+          ) Models
+
+          a(
+            class=currentPath.startsWith('/chat') ? 'active' : ''
+            href='/chat'
+            aria-current=currentPath.startsWith('/chat') ? 'page' : false
+          ) Chat
+
+          a(
+            class=currentPath.startsWith('/training') ? 'active' : ''
+            href='/training'
+            aria-current=currentPath.startsWith('/training') ? 'page' : false
+          ) Fine-tuning
+
+          a(
+            class=currentPath.startsWith('/profile') ? 'active' : ''
+            href='/profile'
+            aria-current=currentPath.startsWith('/profile') ? 'page' : false
+          ) Profile
+
           a.nav-logout(href='/logout') Log out
+
         else if auth0Configured
-          a(href='/login') Log in
-          a.nav-signup(href='/signup') Create account
+          a(
+            class=currentPath === '/login' ? 'active' : ''
+            href='/login'
+          ) Log in
+
+          a.nav-signup(
+            class=currentPath === '/signup' ? 'active' : ''
+            href='/signup'
+          ) Create account
+
     include partials/resource-processing-panel.pug
+
     main.page-container
-      block content
+      .global-page-layout
+        // Shared page progress rail. JavaScript fills in the sections.
+        nav#page-progress.page-progress(
+          aria-label='Page section navigation'
+          hidden
+        )
+          p.page-progress-heading ON THIS PAGE
+
+          .page-progress-track(
+            role='progressbar'
+            aria-label='Page scroll progress'
+            aria-valuemin='0'
+            aria-valuemax='100'
+            aria-valuenow='0'
+          )
+            span#page-progress-fill.page-progress-fill
+
+          ol#page-progress-list.page-progress-list
+
+        .page-content#page-content
+          block content
+
     footer.site-footer
-      p AI Model Hub · Ollama inference, resource-based RAG, and model customization
+      p Epoch · Local AI, intelligent retrieval, and model customization
+
     script(src='/resource-processing-status.js' defer)
+    script(src='/page-progress.js' defer)
     block scripts

@@ -1,0 +1,311 @@
+/* ============================================================
+   EPOCH — MINIMAL TIMELINE PROGRESS RAIL
+   Circles, connecting lines, and visible section labels.
+   ============================================================ */
+
+#epoch-page-progress-rail {
+  --progress-accent: var(--gold, #c5a45c);
+  --progress-line: rgba(160, 170, 185, 0.55);
+  --progress-node-border: #929baa;
+
+  position: fixed;
+  z-index: 1000;
+  top: 50%;
+  right: 3.5rem;
+  transform: translateY(-50%);
+
+  width: auto;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#epoch-page-progress-rail .epoch-progress-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+
+  margin: 0;
+  padding: 0;
+
+  list-style: none;
+}
+
+#epoch-page-progress-rail .epoch-progress-item {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 24px;
+  height: 36px;
+
+  margin: 0;
+  padding: 0;
+
+  list-style: none;
+}
+
+/* Connector lines between nodes. */
+
+#epoch-page-progress-rail
+  .epoch-progress-item:not(:last-child)::after {
+  content: "";
+
+  position: absolute;
+  z-index: 0;
+
+  top: 50%;
+  bottom: -50%;
+  left: 50%;
+
+  width: 2px;
+
+  transform: translateX(-50%);
+
+  background: var(--progress-line);
+  pointer-events: none;
+}
+
+#epoch-page-progress-rail
+  .epoch-progress-item.is-complete::after {
+  background: var(--progress-accent);
+}
+
+/* Timeline nodes. */
+
+#epoch-page-progress-rail .epoch-progress-link {
+  position: relative;
+  z-index: 1;
+
+  display: block;
+  flex: 0 0 11px;
+
+  width: 11px;
+  height: 11px;
+  min-height: 0;
+
+  margin: 0;
+  padding: 0;
+
+  overflow: visible;
+
+  border: 2px solid var(--progress-node-border);
+  border-radius: 50%;
+
+  background: transparent;
+  box-shadow: none;
+
+  color: transparent;
+  font-size: 0;
+  line-height: 1;
+  text-decoration: none;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+/* Completed nodes. */
+
+#epoch-page-progress-rail
+  .epoch-progress-link.is-complete {
+  border-color: var(--progress-accent);
+  background: var(--progress-accent);
+}
+
+/* Current node. */
+
+#epoch-page-progress-rail
+  .epoch-progress-link.is-active {
+  transform: scale(1.2);
+
+  border-color: var(--progress-accent);
+  background: var(--progress-accent);
+
+  box-shadow:
+    0 0 0 4px
+    color-mix(
+      in srgb,
+      var(--progress-accent) 22%,
+      transparent
+    );
+}
+
+/* Hover and keyboard focus. */
+
+#epoch-page-progress-rail
+  .epoch-progress-link:hover {
+  transform: scale(1.2);
+  border-color: var(--progress-accent);
+}
+
+#epoch-page-progress-rail
+  .epoch-progress-link.is-active:hover {
+  transform: scale(1.2);
+}
+
+#epoch-page-progress-rail
+  .epoch-progress-link:focus-visible {
+  outline: 2px solid var(--progress-accent);
+  outline-offset: 5px;
+}
+
+/* ============================================================
+   VISIBLE SECTION LABELS — DESKTOP
+   Labels appear to the left of each timeline node.
+   ============================================================ */
+
+#epoch-page-progress-rail .epoch-progress-label {
+  position: absolute;
+
+  right: calc(100% + 12px);
+  top: 50%;
+
+  display: block;
+  width: max-content;
+  max-width: min(180px, 35vw);
+
+  transform: translateY(-50%);
+
+  color: var(--text-primary, #e8eaf0);
+
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: right;
+  overflow-wrap: anywhere;
+
+  opacity: 0.85;
+  pointer-events: none;
+
+  transition:
+    opacity 0.18s ease,
+    font-weight 0.18s ease;
+}
+
+/* Emphasize the active section label. */
+
+#epoch-page-progress-rail
+  .epoch-progress-item.is-active
+  .epoch-progress-label {
+  opacity: 1;
+  font-weight: 600;
+}
+
+/* Slightly brighten a label when its node is hovered. */
+
+#epoch-page-progress-rail
+  .epoch-progress-item:hover
+  .epoch-progress-label {
+  opacity: 1;
+}
+
+/* Keep section headings visible when navigating to them. */
+
+[data-progress-section][id] {
+  scroll-margin-top: 2rem;
+}
+
+/* ============================================================
+   RESPONSIVE TIMELINE — TABLETS AND MOBILE
+   Timeline becomes horizontal, with labels above the nodes.
+   ============================================================ */
+
+@media (max-width: 1439px) {
+  #epoch-page-progress-rail {
+    top: auto;
+    right: auto;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    width: auto;
+    max-width: calc(100vw - 2rem);
+
+    padding: 3.25rem 0 0;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    scrollbar-width: none;
+  }
+
+  #epoch-page-progress-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  #epoch-page-progress-rail .epoch-progress-list {
+    flex-direction: row;
+    align-items: center;
+
+    width: max-content;
+    min-width: 0;
+  }
+
+  #epoch-page-progress-rail .epoch-progress-item {
+    flex: 0 0 112px;
+
+    width: 112px;
+    height: 60px;
+  }
+
+  /* Horizontal connecting lines. */
+
+  #epoch-page-progress-rail
+    .epoch-progress-item:not(:last-child)::after {
+    top: 50%;
+    right: -50%;
+    bottom: auto;
+    left: 50%;
+
+    width: auto;
+    height: 2px;
+
+    transform: translateY(-50%);
+  }
+
+  /* Labels appear above each node on smaller screens. */
+
+  #epoch-page-progress-rail .epoch-progress-label {
+    top: auto;
+    right: auto;
+    bottom: calc(100% + 9px);
+    left: 50%;
+
+    width: 104px;
+    max-width: 104px;
+
+    transform: translateX(-50%);
+
+    font-size: 0.7rem;
+    line-height: 1.3;
+    text-align: center;
+  }
+
+  body {
+    scroll-padding-bottom: 4rem;
+  }
+}
+
+/* Respect users who prefer reduced motion. */
+
+@media (prefers-reduced-motion: reduce) {
+  #epoch-page-progress-rail .epoch-progress-link,
+  #epoch-page-progress-rail .epoch-progress-label {
+    transition: none;
+  }
+}

@@ -4,11 +4,22 @@ block styles
   link(rel='stylesheet' href='/model_detail_style.css')
 
 block content
+  // ============================================================
+  // BREADCRUMBS
+  // ============================================================
+
   p.breadcrumbs
     a(href='/ai_model') AI Model Hub
     span  / Agent settings
 
-  header.page-heading
+  // ============================================================
+  // AGENT OVERVIEW
+  // ============================================================
+
+  header.page-heading#agent-overview(
+    data-progress-section
+    data-progress-label='Overview'
+  )
     p.eyebrow AGENT CONFIGURATION
     h1= model.name
     p.lead
@@ -23,7 +34,10 @@ block content
   // AGENT AND UNDERLYING MODEL SUMMARY
   // ============================================================
 
-  section.panel.model-summary
+  section.panel.model-summary#agent-summary(
+    data-progress-section
+    data-progress-label='Summary'
+  )
     .model-summary-main
       span.model-provider= model.provider || 'Model provider varies by deployment'
       h2= model.name
@@ -52,7 +66,10 @@ block content
   // ============================================================
 
   if isOwner
-    section.panel
+    section.panel#agent-settings-section(
+      data-progress-section
+      data-progress-label='Settings'
+    )
       .panel-heading
         div
           p.eyebrow PERSONALITY
@@ -153,7 +170,10 @@ block content
           a.button.secondary(href='/chat') Open chat
 
   else
-    section.panel
+    section.panel#agent-settings-section(
+      data-progress-section
+      data-progress-label='Settings'
+    )
       .panel-heading
         div
           p.eyebrow AGENT SETTINGS
@@ -168,7 +188,10 @@ block content
   // RESOURCES LINKED TO THIS AGENT
   // ============================================================
 
-  section.panel
+  section.panel#agent-resources-section(
+    data-progress-section
+    data-progress-label='Resources'
+  )
     .panel-heading
       div
         p.eyebrow KNOWLEDGE
@@ -213,7 +236,10 @@ block content
   // RELATED MODEL INFORMATION
   // ============================================================
 
-  section.panel
+  section.panel#underlying-model-section(
+    data-progress-section
+    data-progress-label='Model Info'
+  )
     .panel-heading
       div
         p.eyebrow UNDERLYING MODEL

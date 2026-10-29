@@ -1,4 +1,12 @@
+/* ============================================================
+   EPOCH — RESOURCE PROCESSING STATUS
+   Polls resource jobs only for authenticated users on pages
+   that display the global panel or processing history table.
+   ============================================================ */
+
 (() => {
+  'use strict';
+
   const panel = document.getElementById(
     'global-resource-jobs-panel'
   );
@@ -15,10 +23,30 @@
     'resource-processing-history-empty'
   );
 
-  // Continue if either the global panel or the history table exists.
-  if ((!panel || !list) && !historyBody) return;
+  // Do nothing on pages that do not display job information.
+  if ((!panel || !list) && !historyBody) {
+    return;
+  }
+
+  // The shared layout displays this link only for logged-in users.
+  // Do not make background requests from the public landing page.
+  const logoutLink = document.querySelector(
+    'a.nav-logout[href="/logout"]'
+  );
+
+  if (!logoutLink) {
+    if (panel) {
+      panel.hidden = true;
+    }
+
+    return;
+  }
+
+  const POLL_INTERVAL = 2000;
 
   let requestInProgress = false;
+  let pollTimeoutId = null;
+  let stopped = false;
 
   function addTextElement(parent, tag, className, text) {
     const element = document.createElement(tag);
@@ -46,20 +74,28 @@
     return labels[status] || status || 'Unknown';
   }
 
-  function parseTimestamp(value) {
-    if (!value) return NaN;
+  function stopPolling() {
+    stopped = true;
 
-    // SQLite CURRENT_TIMESTAMP normally looks like:
-    // 2026-10-25 14:30:00 (UTC)
-    // Also support ISO timestamps that already include a timezone.
-    const normalized = String(value).trim().replace(' ', 'T');
+    if (pollTimeoutId !== null) {
+      window.clearTimeout(pollTimeoutId);
+      pollTimeoutId = null;
+    }
 
-    const hasTimezone =
-      /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized);
+    if (panel) {
+      panel.hidden = true;
+    }
+  }
 
-    return Date.parse(
-      hasTimezone ? normalized : `${normalized}Z`
-    );
+  function scheduleNextRefresh() {
+    if (stopped || pollTimeoutId !== null) {
+      return;
+    }
+
+    pollTimeoutId = window.setTimeout(() => {
+      pollTimeoutId = null;
+      refreshJobs();
+    }, POLL_INTERVAL);
   }
 
   function createJobItem(job) {
@@ -73,7 +109,7 @@
       heading,
       'strong',
       'resource-job-title',
-      job.resource_title || `Resource ${job.resource_id}`
+      job.resource_title || `Resource ${job.resource_id ?? ''}`
     );
 
     addTextElement(
@@ -127,17 +163,17 @@
       'resource-job-meta',
       job.operation === 'index'
         ? 'Resource indexing'
-        : job.operation
+        : job.operation || ''
     );
 
     return item;
   }
 
   function renderGlobalPanel(jobs) {
-    // The history table can still update without the global panel.
-    if (!panel || !list) return;
+    if (!panel || !list) {
+      return;
+    }
 
-    // Show only jobs that are waiting or actively processing.
     const activeJobs = jobs.filter(job =>
       ['pending', 'running'].includes(
         String(job.status || '').toLowerCase()
@@ -150,12 +186,13 @@
       list.appendChild(createJobItem(job));
     }
 
-    // Hide the entire panel when no active jobs remain.
     panel.hidden = activeJobs.length === 0;
   }
 
   function renderHistoryTable(jobs) {
-    if (!historyBody) return;
+    if (!historyBody) {
+      return;
+    }
 
     historyBody.replaceChildren();
 
@@ -166,7 +203,7 @@
         row,
         'td',
         '',
-        job.resource_title || `Resource ${job.resource_id}`
+        job.resource_title || `Resource ${job.resource_id ?? ''}`
       );
 
       addTextElement(
@@ -213,7 +250,9 @@
   }
 
   async function refreshJobs() {
-    if (requestInProgress) return;
+    if (stopped || requestInProgress) {
+      return;
+    }
 
     requestInProgress = true;
 
@@ -224,14 +263,20 @@
         headers: {
           Accept: 'application/json'
         },
-        cache: 'no-store'
+        cache: 'no-store',
+        redirect: 'follow'
       });
 
-      if (response.status === 401) {
-        if (panel) {
-          panel.hidden = true;
-        }
+      // Stop if the session has expired or access is denied.
+      if (response.status === 401 || response.status === 403) {
+        stopPolling();
+        return;
+      }
 
+      // Fetch follows redirects by default. A login redirect may
+      // therefore produce a successful HTML response instead.
+      if (response.redirected) {
+        stopPolling();
         return;
       }
 
@@ -241,25 +286,45 @@
         );
       }
 
-      const data = await response.json();
-      const jobs = Array.isArray(data.jobs)
-        ? data.jobs
-        : [];
+      const contentType = response.headers.get('content-type') || '';
 
-      renderGlobalPanel(jobs);
-      renderHistoryTable(jobs);
+      // Avoid attempting to parse a login page or error page as JSON.
+      if (!contentType.includes('application/json')) {
+        stopPolling();
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!data || !Array.isArray(data.jobs)) {
+        throw new Error('Unexpected resource-status response format.');
+      }
+
+      renderGlobalPanel(data.jobs);
+      renderHistoryTable(data.jobs);
     } catch (err) {
-      console.error(
-        'Could not refresh indexing status:',
-        err
-      );
+      if (!stopped) {
+        console.error(
+          'Could not refresh indexing status:',
+          err
+        );
+      }
     } finally {
       requestInProgress = false;
+
+      // Retry after a delay unless polling has been stopped.
+      // Scheduling here avoids overlapping requests.
+      scheduleNextRefresh();
     }
   }
 
-  // Refresh immediately, then poll while this page is open.
+  // Refresh immediately, then schedule subsequent requests.
   refreshJobs();
 
-  window.setInterval(refreshJobs, 2000);
+  // Stop future polling if the page is being unloaded.
+  window.addEventListener(
+    'pagehide',
+    stopPolling,
+    { once: true }
+  );
 })();

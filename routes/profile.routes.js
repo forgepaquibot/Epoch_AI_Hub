@@ -20,6 +20,7 @@ router.get('/profile', requireUser, async (req, res, next) => {
     }
 
     return res.render('profile', {
+      title: 'Profile',
       user,
       auth0Profile: req.oidc?.user || null
     });

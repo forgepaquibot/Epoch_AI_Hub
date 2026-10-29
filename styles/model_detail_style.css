@@ -41,9 +41,12 @@
   padding: .9rem;
   border: 1px solid var(--line);
   border-radius: 9px;
-  background: #fafbfe;
   cursor: pointer;
   font-weight: 400;
+}
+
+.resource-checkbox:hover {
+  border-color: #72603a;
 }
 
 .resource-checkbox span {

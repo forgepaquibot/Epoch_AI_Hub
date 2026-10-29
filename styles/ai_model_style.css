@@ -1,3 +1,12 @@
+/* ============================================================
+   EPOCH — AI MODEL HUB
+   Obsidian Black · Metallic Gold · Futuristic Interface
+   ============================================================ */
+
+/* ============================================================
+   MODEL AND AGENT CATALOG GRIDS
+   ============================================================ */
+
 .model-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -5,30 +14,153 @@
 }
 
 .model-card {
+  position: relative;
+
   display: flex;
   min-width: 0;
   flex-direction: column;
+
   padding: 1.2rem;
+
+  color: #f4f0e6;
+
+  border: 1px solid #39352d;
+  border-radius: 15px;
+
+  background:
+    radial-gradient(
+      ellipse at 100% 0%,
+      rgb(214 173 82 / 5%),
+      transparent 45%
+    ),
+    linear-gradient(
+      145deg,
+      #191917,
+      #10100f
+    );
+
+  box-shadow:
+    0 10px 28px rgb(0 0 0 / 20%),
+    inset 0 1px 0 rgb(255 255 255 / 2%);
+
+  overflow: hidden;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.model-card:hover {
+  border-color: #66512a;
+
+  box-shadow:
+    0 16px 36px rgb(0 0 0 / 28%),
+    0 0 20px rgb(214 173 82 / 4%);
+
+  transform: translateY(-2px);
 }
 
 .model-card h3 {
-  margin: .2rem 0 .45rem;
+  margin: 0.2rem 0 0.5rem;
+
+  color: #f1e7cf;
+
   font-size: 1.12rem;
+  line-height: 1.45;
+
   overflow-wrap: anywhere;
 }
 
-.model-card > p:not(.model-reference) {
-  color: #536178;
-  font-size: .9rem;
-  line-height: 1.55;
-}
+/* Descriptions and card metadata */
 
-.model-reference {
-  margin: .1rem 0 .5rem;
+.model-card > p:not(.model-reference) {
+  color: #b7af9f;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
 }
 
 .model-card .muted {
-  font-size: .82rem;
+  color: #969082;
+  font-size: 0.82rem;
+}
+
+.model-reference {
+  margin: 0.1rem 0 0.5rem;
+
+  color: #d6b967;
+
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+
+  font-size: 0.82rem;
+  line-height: 1.55;
+
+  overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   MODEL CARD TOPLINE AND BADGES
+   ============================================================ */
+
+.model-card .card-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+
+  gap: 0.5rem;
+  margin-bottom: 0.95rem;
+}
+
+.model-provider {
+  max-width: 100%;
+
+  color: #f0ce72;
+
+  border: 1px solid #66512a;
+  background: #241e12;
+
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+}
+
+.model-card .card-topline .visibility {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+/* Public agent/model badge */
+
+.model-card .visibility.public {
+  color: #8fe0b2;
+  border: 1px solid #285c42;
+  background: #173126;
+}
+
+/* Private agent/model badge */
+
+.model-card .visibility.private {
+  color: #c3bbaa;
+  border: 1px solid #464239;
+  background: #22211e;
+}
+
+/* Deprecated agent badge */
+
+.model-card .status-disabled {
+  color: #f2ca77;
+  border: 1px solid #765c29;
+  background: #302615;
 }
 
 /* ============================================================
@@ -36,164 +168,537 @@
    ============================================================ */
 
 .model-card .button {
-  font-size: .83rem;
-  padding: .6rem .75rem;
+  min-height: 36px;
+  padding: 0.6rem 0.8rem;
+
+  font-size: 0.83rem;
+  line-height: 1.35;
+}
+
+.model-card .button:not(.secondary) {
+  color: #11100d;
+  border-color: #d6ad52;
+
+  background: linear-gradient(
+    135deg,
+    #f0ce72,
+    #c99a37
+  );
+}
+
+.model-card .button:not(.secondary):hover {
+  color: #080808;
+  border-color: #ffe5a0;
+
+  background: linear-gradient(
+    135deg,
+    #ffe5a0,
+    #d6ad52
+  );
+}
+
+.model-card .button.secondary {
+  color: #f0ce72;
+  border-color: #66512a;
+  background: #171715;
+}
+
+.model-card .button.secondary:hover {
+  color: #11100d;
+  border-color: #d6ad52;
+  background: #d6ad52;
 }
 
 /* ============================================================
    UNREGISTER MODEL BUTTON
-   Uses the default button appearance.
-   Aligns alone at the bottom-right of the model card.
+   Compact gold-framed icon, aligned bottom-right
    ============================================================ */
 
 .model-card .model-card-actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+
   width: 100%;
   margin-top: auto;
-  padding-top: .8rem;
+  padding-top: 0.9rem;
+
+  border-top: 1px solid #302d26;
 }
 
 .model-card .model-card-actions button.button.secondary.unregister-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
+
+  width: 36px;
   height: 36px;
-  padding: 0;
+  min-width: 36px;
+  min-height: 36px;
+
   margin: 0;
+  padding: 0;
   flex-shrink: 0;
+
+  color: #d6ad52;
+  border: 1px solid #66512a;
+  border-radius: 8px;
+
+  background: #191713;
+  box-shadow: none;
+
   cursor: pointer;
 
   transition:
-    background-color .15s ease,
-    border-color .15s ease,
-    color .15s ease;
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .model-card .model-card-actions button.button.secondary.unregister-button img {
   display: block;
-  width: 22px;
-  height: 22px;
+
+  width: 18px;
+  height: 18px;
+  max-width: 100%;
+  max-height: 100%;
+
   object-fit: contain;
 }
 
 .model-card .model-card-actions button.button.secondary.unregister-button:hover,
 .model-card .model-card-actions button.button.secondary.unregister-button:focus-visible {
-  background-color: darkorange;
-  border-color: darkorange;
-  color: white;
+  color: #ffaaaa;
+
+  border-color: #934343;
+  background: #341a1a;
+
+  box-shadow: 0 0 12px rgb(211 69 69 / 8%);
+}
+
+.model-card .model-card-actions button.button.secondary.unregister-button:hover img {
+  filter: brightness(0) saturate(100%)
+    invert(78%) sepia(15%) saturate(1147%)
+    hue-rotate(310deg) brightness(105%);
 }
 
 /* ============================================================
    AGENT CARD ACTIONS
-   Settings and Chat stay on the left.
-   Delete is pushed to the right.
+   Settings and Chat on the left, Delete on the right
    ============================================================ */
 
 .model-card .card-actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: .5rem;
+  flex-wrap: wrap;
+
+  gap: 0.5rem;
   width: 100%;
+
   margin-top: auto;
-  padding-top: .8rem;
+  padding-top: 0.9rem;
+
+  border-top: 1px solid #302d26;
+}
+
+.model-card .card-actions > a.button {
+  flex-shrink: 0;
 }
 
 .agent-delete-form {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
+
   flex-shrink: 0;
   margin: 0 0 0 auto;
 }
 
-/* Delete button: uses the default button appearance */
+/* Delete agent button */
 
 .model-card .card-actions button.agent-delete-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: .4rem;
+
+  gap: 0.4rem;
+
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   min-height: 36px;
-  padding: .5rem .75rem;
+
   margin: 0;
+  padding: 0;
+
+  color: #d6ad52;
+  border: 1px solid #66512a;
+  border-radius: 8px;
+
+  background: #191713;
+  box-shadow: none;
+
   cursor: pointer;
 
   transition:
-    background-color .15s ease,
-    border-color .15s ease,
-    color .15s ease;
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .model-card .card-actions button.agent-delete-button img {
   display: block;
-  width: 18px;
-  height: 18px;
+
+  width: 17px;
+  height: 17px;
+  max-width: 100%;
+  max-height: 100%;
+
   object-fit: contain;
 }
 
 .model-card .card-actions button.agent-delete-button:hover,
 .model-card .card-actions button.agent-delete-button:focus-visible {
-  background-color: crimson;
-  border-color: crimson;
-  color: white;
+  color: #ffaaaa;
+
+  border-color: #934343;
+  background: #341a1a;
+
+  box-shadow: 0 0 12px rgb(211 69 69 / 8%);
+}
+
+.model-card .card-actions button.agent-delete-button:hover img {
+  filter: brightness(0) saturate(100%)
+    invert(78%) sepia(15%) saturate(1147%)
+    hue-rotate(310deg) brightness(105%);
 }
 
 /* ============================================================
-   GENERAL PANEL HEADINGS
+   REGISTRATION FORMS AND PANELS
    ============================================================ */
 
 .panel > h3 {
-  margin: 1.4rem 0 .7rem;
+  margin: 1.4rem 0 0.7rem;
+  color: #f1e7cf;
 }
 
-.model-card .card-topline {
-  align-items: flex-start;
+.panel .panel-heading h2 {
+  color: #f1e7cf;
 }
 
-.model-card .card-topline .visibility {
-  white-space: nowrap;
+.panel .panel-heading .muted {
+  color: #aaa397;
+  line-height: 1.7;
 }
 
-/* Indexing history controls */
+/* Consistent dark inputs within the Model Hub */
+
+.panel input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.panel select,
+.panel textarea {
+  color: #f4f0e6;
+  color-scheme: dark;
+
+  border-color: #403a30;
+  background-color: #0c0c0b;
+}
+
+.panel input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+.panel select:focus,
+.panel textarea:focus {
+  border-color: #d6ad52;
+  outline: none;
+
+  box-shadow: 0 0 0 3px rgb(214 173 82 / 11%);
+}
+
+.panel .field,
+.panel .field-label {
+  color: #e8e0d0;
+}
+
+.panel .form-help,
+.panel .field small {
+  color: #969082;
+}
+
+.panel .checkbox-label {
+  color: #e8e0d0;
+}
+
+.panel .checkbox-label input {
+  accent-color: #d6ad52;
+}
+
+.panel .metadata-panel {
+  border-color: #4a4030;
+  background: #10100f;
+}
+
+.panel .metadata-panel h3 {
+  color: #f1e7cf;
+}
+
+/* ============================================================
+   EMPTY STATES
+   ============================================================ */
+
+.panel .empty-state {
+  color: #aaa397;
+
+  border-color: #66512a;
+  border-radius: 12px;
+
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgb(214 173 82 / 6%),
+      transparent 65%
+    ),
+    #111110;
+}
+
+.panel .empty-state h2,
+.panel .empty-state h3 {
+  color: #f1e7cf;
+}
+
+.panel .empty-state p,
+.panel .empty-copy {
+  color: #aaa397;
+  line-height: 1.7;
+}
+
+/* ============================================================
+   INDEXING HISTORY CONTROLS
+   ============================================================ */
+
 .job-history-actions {
   display: flex;
   justify-content: flex-end;
-  margin: 0 0 .75rem;
+
+  margin: 0 0 0.75rem;
 }
 
 .job-history-actions .clear-history-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
+
+  width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+
   padding: 0;
   flex-shrink: 0;
+
+  color: #d6ad52;
+  border: 1px solid #66512a;
+  border-radius: 8px;
+
+  background: #191713;
+  box-shadow: none;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
 }
 
 .job-history-actions .clear-history-button img {
   display: block;
-  width: 22px;
-  height: 22px;
+
+  width: 18px;
+  height: 18px;
+  max-width: 100%;
+  max-height: 100%;
+
   object-fit: contain;
+}
+
+.job-history-actions .clear-history-button:hover {
+  color: #ffaaaa;
+  border-color: #934343;
+  background: #341a1a;
+}
+
+.job-history-actions .clear-history-button:hover img {
+  filter: brightness(0) saturate(100%)
+    invert(78%) sepia(15%) saturate(1147%)
+    hue-rotate(310deg) brightness(105%);
+}
+
+/* ============================================================
+   RESOURCE PROCESSING STATUS TABLE
+   ============================================================ */
+
+.panel .table-wrap {
+  border-color: #39352d;
+  background: #111110;
+}
+
+.panel .table-wrap table {
+  color: #e9e2d4;
+}
+
+.panel .table-wrap th {
+  color: #e4c978;
+  border-bottom-color: #514326;
+  background: #1d1b16;
+}
+
+.panel .table-wrap td {
+  color: #ded7c9;
+  border-bottom-color: #2e2c27;
+}
+
+.panel .table-wrap tbody tr:hover {
+  background: rgb(214 173 82 / 4%);
+}
+
+.panel .table-wrap tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* History status labels */
+
+.panel .status-ready,
+.panel .status-done {
+  color: #8fe0b2;
+  border: 1px solid #285c42;
+  background: #173126;
+}
+
+.panel .status-queued,
+.panel .status-processing,
+.panel .status-running,
+.panel .status-pending {
+  color: #f2ca77;
+  border: 1px solid #765c29;
+  background: #302615;
+}
+
+.panel .status-failed {
+  color: #ffaaaa;
+  border: 1px solid #713737;
+  background: #341a1a;
+}
+
+.panel .status-cancelled {
+  color: #c3bbaa;
+  border: 1px solid #464239;
+  background: #22211e;
+}
+
+/* ============================================================
+   RAG AND FINE-TUNING NOTE STRIPS
+   ============================================================ */
+
+.note-strip {
+  border-color: #514326;
+
+  background: linear-gradient(
+    120deg,
+    #1c1912,
+    #111110
+  );
+}
+
+.note-strip h2 {
+  color: #f1e7cf;
+}
+
+.note-strip p {
+  color: #aaa397;
+}
+
+.note-strip .button.secondary {
+  color: #f0ce72;
+  border-color: #66512a;
+  background: #171715;
+}
+
+.note-strip .button.secondary:hover {
+  color: #11100d;
+  border-color: #d6ad52;
+  background: #d6ad52;
 }
 
 /* ============================================================
    RESPONSIVE LAYOUT
    ============================================================ */
 
+@media (max-width: 1100px) {
+  .model-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .model-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .model-card .card-actions > a.button {
+    flex: 1 1 auto;
   }
 }
 
 @media (max-width: 620px) {
   .model-grid {
     grid-template-columns: 1fr;
+  }
+
+  .model-card {
+    padding: 1rem;
+  }
+
+  .model-card .card-actions {
+    gap: 0.45rem;
+  }
+
+  .model-card .card-actions > a.button {
+    flex: 1 1 auto;
+  }
+
+  .agent-delete-form {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 400px) {
+  .model-card .card-actions > a.button {
+    width: 100%;
+  }
+
+  .model-card .card-actions {
+    align-items: stretch;
+  }
+
+  .agent-delete-form {
+    margin-left: auto;
+  }
+}
+
+/* ============================================================
+   ACCESSIBILITY — REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .model-card,
+  .model-card .button,
+  .model-card .model-card-actions button,
+  .model-card .card-actions button,
+  .job-history-actions .clear-history-button {
+    transition: none !important;
+  }
+
+  .model-card:hover {
+    transform: none;
   }
 }

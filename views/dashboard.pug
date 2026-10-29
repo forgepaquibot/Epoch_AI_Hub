@@ -4,12 +4,25 @@ block styles
   link(rel='stylesheet' href='/dashboard_style.css')
 
 block content
-  header.page-heading
-    p.eyebrow WORKSPACE OVERVIEW
-    h1 Welcome back, #{currentUser.username}
-    p.lead Your library, models, and conversations in one place.
+  // ============================================================
+  // EPOCH WORKSPACE OVERVIEW
+  // ============================================================
 
-  section.stats-grid(aria-label='Workspace summary')
+  header.page-heading#dashboard-overview(
+    data-progress-section
+    data-progress-label='Overview'
+  )
+    p.eyebrow EPOCH // WORKSPACE OVERVIEW
+    h1 Welcome back, #{currentUser.username}
+    p.lead Your resources, models, and conversations, all in one place.
+
+  // ============================================================
+  // WORKSPACE STATISTICS
+  // ============================================================
+
+  section.stats-grid#dashboard-stats(
+    aria-label='Workspace summary'
+  )
     article.stat-card
       span.stat-label Accessible resources
       strong.stat-number= resourceCounts.total || 0
@@ -25,80 +38,120 @@ block content
       strong.stat-number= chatCounts.total || 0
       span.stat-foot Saved to your account
 
-  section.dashboard-actions
+  // ============================================================
+  // QUICK ACTIONS
+  // ============================================================
+
+  section.dashboard-actions#dashboard-actions(
+    aria-label='Workspace actions'
+  )
     a.action-card(href='/resources')
-      span.action-icon R
+      span.action-icon 01
       span
         strong Manage resources
         small Upload, search, and share information
-      span.action-arrow →
+      span.action-arrow(aria-hidden='true') →
 
     a.action-card(href='/ai_model')
-      span.action-icon M
+      span.action-icon 02
       span
         strong Manage models
         small Register models and index resources
-      span.action-arrow →
+      span.action-arrow(aria-hidden='true') →
 
     a.action-card(href='/chat')
-      span.action-icon C
+      span.action-icon 03
       span
         strong Start a conversation
         small Chat with a model you can access
-      span.action-arrow →
+      span.action-arrow(aria-hidden='true') →
+
+  // ============================================================
+  // RECENT RESOURCES AND CONVERSATIONS
+  // ============================================================
 
   .dashboard-columns
-    section.panel
+    // ----------------------------------------------------------
+    // RECENT RESOURCES
+    // ----------------------------------------------------------
+
+    section.panel#dashboard-resources(
+      data-progress-section
+      data-progress-label='Resources & Conversations'
+    )
       .panel-heading
         div
           p.eyebrow YOUR LIBRARY
           h2 Recent resources
-        a.text-link(href='/resources#resource-results') View all
+          p.muted Your most recently added reference material.
+
+        a.text-link(href='/resources#resource-results') View all →
 
       if recentResources.length
         .compact-list
           each item in recentResources
             a.compact-item(href=`/resources#${item.resource_id}`)
               span.file-chip= (item.resource_type || 'FILE').toUpperCase()
+
               span.compact-main
                 strong= item.title
-                small #{item.owner_username || 'Unknown owner'} · #{item.processing_status || 'uploaded'}
-              span.status-dot(class='status-' + (item.processing_status || 'uploaded'))
+                small
+                  | #{item.owner_username || 'Unknown owner'}
+                  |  · #{item.processing_status || 'uploaded'}
+
+              span.status-dot(
+                class='status-' + (item.processing_status || 'uploaded')
+                aria-label='Status: ' + (item.processing_status || 'uploaded')
+              )
       else
-        p.empty-copy No resources yet. Upload a resource to start building your library.
+        p.empty-copy No resources yet. Upload your first resource to start building your library.
         a.button.secondary(href='/resources') Upload a resource
 
-    section.panel
+    // ----------------------------------------------------------
+    // RECENT CONVERSATIONS
+    // ----------------------------------------------------------
+
+    section.panel#dashboard-conversations
       .panel-heading
         div
           p.eyebrow CHAT HISTORY
           h2 Recent conversations
-        a.text-link(href='/chat') Open chat
+          p.muted Pick up where your AI sessions left off.
+
+        a.text-link(href='/chat') Open chat →
 
       if recentChats.length
         .compact-list
           each item in recentChats
             a.compact-item(href='/chat')
               span.file-chip CHAT
+
               span.compact-main
                 strong= item.title || 'Untitled conversation'
-                small #{item.model_name} · #{item.updated_at || ''}
-              span.action-arrow →
+                small
+                  | #{item.model_name}
+                  |  · #{item.updated_at || ''}
+
+              span.action-arrow(aria-hidden='true') →
       else
-        p.empty-copy Your recent chats will appear here after your first message.
+        p.empty-copy Your conversations will appear here after your first message.
         a.button.secondary(href='/chat') Start chatting
 
   // ============================================================
-  // RECENT RESOURCE INDEXING JOBS
+  // RESOURCE INDEXING ACTIVITY
   // ============================================================
 
-  section.panel
+  section.panel.resource-history-panel#dashboard-indexing(
+    data-progress-section
+    data-progress-label='Indexing'
+  )
     .panel-heading
       div
-        p.eyebrow PROCESSING
+        p.eyebrow SYSTEM ACTIVITY
         h2 Recent indexing jobs
         p.muted
-          | Job statuses and progress update automatically.
+          | Monitor the progress of resource extraction, validation,
+          | and indexing. Job statuses update automatically.
 
     .table-wrap
       table

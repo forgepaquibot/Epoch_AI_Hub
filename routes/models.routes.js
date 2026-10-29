@@ -525,6 +525,7 @@ router.get('/ai_model', requireUser, async (req, res) => {
     );
 
     return res.render('ai_model', {
+      title: 'AI Models & Agents',
       models: agents,
       agents,
       activeAgents,

@@ -87,6 +87,7 @@ router.get('/resources', requireUser, async (req, res, next) => {
     const results = rows.map(mapResourceForTemplate);
 
     return res.render('resources', {
+      title: 'Resources',
       results,
       currentUserId: userId,
       message,
@@ -626,6 +627,7 @@ router.get('/search', requireUser, async (req, res, next) => {
     const formData = await loadFormData();
 
     return res.render('resources', {
+      title: 'Resources',
       results,
       currentUserId: userId,
       message: null,

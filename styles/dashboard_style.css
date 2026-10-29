@@ -1,3 +1,12 @@
+/* =========================================================
+   EPOCH — DASHBOARD
+   Obsidian black · Metallic gold · Futuristic interface
+   ========================================================= */
+
+/* =========================================================
+   WORKSPACE STATISTICS
+   ========================================================= */
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -5,24 +14,96 @@
   margin: 1.3rem 0;
 }
 
-.stat-card {
-  padding: 1.25rem 1.4rem;
+.stats-grid .stat-card {
+  position: relative;
+  min-width: 0;
+  padding: 1.35rem 1.4rem;
+
+  border: 1px solid #39352d;
+  border-radius: 14px;
+
+  background:
+    radial-gradient(
+      ellipse at 100% 0%,
+      rgb(214 173 82 / 8%),
+      transparent 55%
+    ),
+    linear-gradient(145deg, #191917, #10100f);
+
+  box-shadow:
+    0 12px 28px rgb(0 0 0 / 20%),
+    inset 0 1px 0 rgb(255 255 255 / 2%);
+
+  overflow: hidden;
+
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.stats-grid .stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  width: 40%;
+  height: 1px;
+
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #d6ad52,
+    transparent
+  );
+
+  opacity: 0.65;
+}
+
+.stats-grid .stat-card:hover {
+  transform: translateY(-3px);
+  border-color: #715d35;
+
+  box-shadow:
+    0 17px 35px rgb(0 0 0 / 28%),
+    0 0 22px rgb(214 173 82 / 4%);
 }
 
 .stat-label,
 .stat-foot {
   display: block;
-  color: var(--muted);
-  font-size: .85rem;
+  color: #aaa397;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.stat-label {
+  font-weight: 600;
+  letter-spacing: 0.015em;
 }
 
 .stat-number {
   display: block;
-  margin: .35rem 0;
-  font-size: 2.3rem;
-  letter-spacing: -.06em;
-  color: #18263d;
+  margin: 0.4rem 0;
+
+  color: #f0ce72;
+
+  font-size: clamp(2rem, 3vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 1.2;
+
+  text-shadow: 0 0 24px rgb(214 173 82 / 10%);
 }
+
+.stat-foot {
+  color: #81796b;
+  font-size: 0.8rem;
+}
+
+/* =========================================================
+   DASHBOARD QUICK ACTIONS
+   ========================================================= */
 
 .dashboard-actions {
   display: grid;
@@ -32,52 +113,140 @@
 }
 
 .action-card {
+  position: relative;
+
   display: flex;
   align-items: center;
-  gap: .85rem;
+  gap: 0.85rem;
+  min-width: 0;
+
   padding: 1rem;
-  border: 1px solid #dfe5ef;
-  border-radius: 12px;
-  background: #fff;
-  color: var(--ink);
+
+  color: #f4f0e6;
   text-decoration: none;
+
+  border: 1px solid #39352d;
+  border-radius: 12px;
+
+  background: linear-gradient(
+    145deg,
+    #171715,
+    #10100f
+  );
+
+  box-shadow:
+    0 8px 22px rgb(0 0 0 / 16%),
+    inset 0 1px 0 rgb(255 255 255 / 2%);
+
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .action-card:hover {
-  border-color: #b7c5f4;
-  background: #fbfcff;
+  color: #fff0c5;
+
+  border-color: #826833;
+
+  background: linear-gradient(
+    145deg,
+    #211e17,
+    #121210
+  );
+
+  box-shadow:
+    0 12px 28px rgb(0 0 0 / 26%),
+    0 0 20px rgb(214 173 82 / 5%);
+
+  transform: translateY(-3px);
 }
+
+.action-card:focus-visible {
+  outline: 2px solid #f0ce72;
+  outline-offset: 3px;
+}
+
+/* Numbered gold action icon */
 
 .action-icon {
   display: grid;
   place-items: center;
+
   flex: 0 0 42px;
   width: 42px;
   height: 42px;
+
+  color: #f0ce72;
+
+  border: 1px solid #66512a;
   border-radius: 12px;
-  background: #edf1ff;
-  color: #355be0;
+
+  background: linear-gradient(
+    145deg,
+    #292216,
+    #17140e
+  );
+
+  font-size: 0.85rem;
   font-weight: 850;
+  letter-spacing: 0.04em;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.action-card:hover .action-icon {
+  border-color: #b18a3e;
+  box-shadow: 0 0 15px rgb(214 173 82 / 10%);
 }
 
 .action-card > span:nth-child(2) {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: .28rem;
+  gap: 0.28rem;
   min-width: 0;
 }
 
-.action-card small {
-  color: var(--muted);
-  font-size: .8rem;
+.action-card strong {
+  color: #f1e7cf;
+  font-size: 0.94rem;
   line-height: 1.4;
 }
 
-.action-arrow {
-  margin-left: auto;
-  color: #4564d4;
-  font-size: 1.2rem;
+.action-card:hover strong {
+  color: #ffe5a0;
 }
+
+.action-card small {
+  color: #aaa397;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.action-arrow {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: #d6ad52;
+  font-size: 1.2rem;
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.action-card:hover .action-arrow {
+  color: #ffe5a0;
+  transform: translateX(3px);
+}
+
+/* =========================================================
+   RECENT RESOURCES AND CONVERSATIONS
+   ========================================================= */
 
 .dashboard-columns {
   display: grid;
@@ -87,21 +256,45 @@
 
 .dashboard-columns .panel {
   min-width: 0;
+  margin-top: 0;
+}
+
+.dashboard-columns .panel-heading {
+  align-items: flex-start;
+}
+
+.dashboard-columns .panel-heading .text-link {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
 }
 
 .compact-list {
   display: grid;
-  gap: .25rem;
+  gap: 0.15rem;
 }
 
 .compact-item {
   display: flex;
   align-items: center;
-  gap: .75rem;
-  padding: .75rem .1rem;
-  border-bottom: 1px solid #edf0f5;
-  color: var(--ink);
+  gap: 0.75rem;
+  min-width: 0;
+
+  padding: 0.8rem 0.2rem;
+
+  color: #e9e2d4;
   text-decoration: none;
+
+  border-bottom: 1px solid #2e2c27;
+
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.compact-item:hover {
+  color: #fff0c5;
+  border-bottom-color: #5c4928;
+  background: rgb(214 173 82 / 3%);
 }
 
 .compact-item:last-child {
@@ -113,47 +306,238 @@
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: .25rem;
+  gap: 0.28rem;
 }
 
 .compact-main strong {
   overflow-wrap: anywhere;
-  font-size: .92rem;
+  color: #e8e0d0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.compact-item:hover .compact-main strong {
+  color: #ffe5a0;
 }
 
 .compact-main small {
-  color: var(--muted);
-  font-size: .79rem;
+  color: #969082;
+  font-size: 0.79rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
+/* Resource type and chat badges */
+
+.dashboard-columns .file-chip {
+  flex-shrink: 0;
+  color: #f0ce72;
+
+  border: 1px solid #66512a;
+  background: #241e12;
+
+  font-size: 0.68rem;
+  letter-spacing: 0.055em;
+}
+
+/* =========================================================
+   RESOURCE PROCESSING STATUS DOTS
+   ========================================================= */
+
 .status-dot {
+  display: inline-block;
   flex: 0 0 8px;
   width: 8px;
   height: 8px;
+
+  border: 1px solid transparent;
   border-radius: 50%;
 }
 
 .status-dot.status-ready,
 .status-dot.status-done {
-  background: #29995b;
+  background: #69d69a;
+  box-shadow: 0 0 8px rgb(105 214 154 / 25%);
 }
 
 .status-dot.status-failed {
-  background: #d34545;
+  background: #ff8585;
+  box-shadow: 0 0 8px rgb(255 133 133 / 20%);
 }
 
 .status-dot.status-uploaded {
-  background: #a2aab8;
+  background: #a39b8b;
 }
 
 .status-dot.status-processing,
 .status-dot.status-running,
-.status-dot.status-queued {
-  background: #d6a02b;
+.status-dot.status-queued,
+.status-dot.status-pending {
+  background: #f0c55f;
+  box-shadow: 0 0 8px rgb(240 197 95 / 25%);
 }
 
-.empty-copy {
-  margin: .4rem 0 1rem;
+/* =========================================================
+   RESOURCE HISTORY AND INDEXING TABLE
+   ========================================================= */
+
+.resource-history-panel {
+  margin-top: 1.3rem;
+}
+
+.resource-history-panel .panel-heading {
+  margin-bottom: 1.15rem;
+}
+
+.resource-history-panel .panel-heading h2 {
+  color: #f1e7cf;
+}
+
+.resource-history-panel .panel-heading .muted {
+  max-width: 680px;
+  line-height: 1.65;
+}
+
+.resource-history-panel .table-wrap {
+  border-color: #39352d;
+  border-radius: 10px;
+  background: #111110;
+}
+
+.resource-history-panel table {
+  width: 100%;
+  min-width: 580px;
+
+  color: #e9e2d4;
+  border-collapse: collapse;
+}
+
+.resource-history-panel th {
+  padding: 0.8rem 0.85rem;
+
+  color: #e4c978;
+  border-bottom: 1px solid #514326;
+
+  background: #1d1b16;
+
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.resource-history-panel td {
+  padding: 0.8rem 0.85rem;
+
+  color: #ded7c9;
+  border-bottom: 1px solid #2e2c27;
+
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.resource-history-panel tbody tr {
+  transition: background 0.18s ease;
+}
+
+.resource-history-panel tbody tr:hover {
+  background: rgb(214 173 82 / 4%);
+}
+
+.resource-history-panel tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Status badges inside the history table */
+
+.resource-history-panel .status {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 0.3rem 0.6rem;
+
+  border: 1px solid transparent;
+  border-radius: 999px;
+
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.015em;
+}
+
+.resource-history-panel .status-ready,
+.resource-history-panel .status-done {
+  color: #8fe0b2;
+  border-color: #285c42;
+  background: #173126;
+}
+
+.resource-history-panel .status-uploaded,
+.resource-history-panel .status-disabled {
+  color: #c3bbaa;
+  border-color: #464239;
+  background: #22211e;
+}
+
+.resource-history-panel .status-queued,
+.resource-history-panel .status-processing,
+.resource-history-panel .status-running,
+.resource-history-panel .status-pending {
+  color: #f2ca77;
+  border-color: #765c29;
+  background: #302615;
+}
+
+.resource-history-panel .status-failed {
+  color: #ffaaaa;
+  border-color: #713737;
+  background: #341a1a;
+}
+
+.resource-history-panel .status-cancelled {
+  color: #c3bbaa;
+  border-color: #464239;
+  background: #22211e;
+}
+
+.resource-history-panel .empty-copy {
+  margin: 1rem 0 0;
+  color: #969082;
+}
+
+/* =========================================================
+   EMPTY STATES
+   ========================================================= */
+
+.dashboard-columns .empty-copy {
+  margin: 0.4rem 0 1rem;
+  color: #aaa397;
+  line-height: 1.7;
+}
+
+.dashboard-columns .button.secondary {
+  color: #f0ce72;
+  border-color: #66512a;
+  background: #171715;
+}
+
+.dashboard-columns .button.secondary:hover {
+  color: #080808;
+  border-color: #f0ce72;
+  background: linear-gradient(135deg, #f0ce72, #c99a37);
+}
+
+/* =========================================================
+   RESPONSIVE LAYOUT
+   ========================================================= */
+
+@media (max-width: 1000px) {
+  .dashboard-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-columns {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 850px) {
@@ -171,7 +555,55 @@
     grid-template-columns: 1fr;
   }
 
-  .stat-card {
+  .stats-grid .stat-card {
     padding: 1rem 1.1rem;
+  }
+
+  .dashboard-actions {
+    gap: 0.75rem;
+  }
+
+  .action-card {
+    padding: 0.9rem;
+    gap: 0.7rem;
+  }
+
+  .action-icon {
+    flex-basis: 38px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .dashboard-columns .panel {
+    padding: 1rem;
+  }
+
+  .compact-item {
+    gap: 0.55rem;
+  }
+
+  .resource-history-panel .panel-heading {
+    gap: 0.5rem;
+  }
+}
+
+/* =========================================================
+   ACCESSIBILITY — REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .action-card,
+  .action-icon,
+  .action-arrow,
+  .compact-item,
+  .compact-main strong,
+  .resource-history-panel tbody tr {
+    transition: none !important;
+  }
+
+  .stat-card:hover,
+  .action-card:hover {
+    transform: none;
   }
 }

@@ -143,6 +143,7 @@ router.get('/chat', requireUser, async (req, res, next) => {
     req.session.message = null;
 
     return res.render('chat', {
+      title: 'Chat',
       agents,
       models: agents,
       sessions,

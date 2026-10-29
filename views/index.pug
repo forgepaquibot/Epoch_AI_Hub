@@ -9,52 +9,75 @@ block content
 
   section.hero
     .hero-copy
-      p.eyebrow YOUR PERSONAL AI WORKSPACE
-      h1 Bring your resources and AI models together.
+      p.eyebrow EPOCH // YOUR PERSONAL AI WORKSPACE
+
+      h1 Handle your own AI Models and Agents.
+
       p.lead
-        | Register local Ollama models, organize reference material,
-        | index content for retrieval-augmented generation, and give
-        | each model its own instructions and welcome message.
+        | Register AI Models from various providers and run agents locally or on our servers. 
+        | Upload resources and train by indexing content for retrieval-augmented generation.
+        | Fine-tune model weights for a more tailored experience in different modes.
+
       if currentUser
         .actions
           a.button(href='/dashboard') Open dashboard
           a.button.secondary(href='/resources') Browse resources
+
       else if auth0Configured
         .actions
           a.button(href='/login' data-auth-redirect) Log in securely
           a.button.secondary(href='/signup' data-auth-redirect) Create account
+
         p.muted Sign-in and account creation are handled by Auth0.
+
       else
         p.notice Authentication is not configured. Add your Auth0 settings to .env before signing in.
+
     .hero-aside(aria-hidden='true')
       .orb.orb-one
       .orb.orb-two
+
       .hero-mark
-        span AI
-        small MODEL HUB
+        img.epoch-logo(src='/Logo1.png' alt='')
+        span EPOCH
+        small PERSONAL AI WORKSPACE
 
   section.feature-grid(aria-label='Platform features')
     article.feature-card
       span.feature-icon 01
       h2 Resource library
-      p Upload PDFs, text, Markdown, CSV, JSON, and JSONL resources. Keep them private or publish them for other signed-in users.
+      p
+        | Upload PDFs, text, Markdown, CSV, JSON, and JSONL resources.
+        | Keep them private or publish them for other signed-in users.
+
     article.feature-card
       span.feature-icon 02
       h2 Local model hub
-      p Register installed Ollama models, manage visibility, and attach indexed information to models you can access.
+      p
+        | Register models from providers such as Ollama or WebLLM, and create custom agents.
+        | Manage visibility and agent runtimes (local or on server hardware). 
+
     article.feature-card
       span.feature-icon 03
       h2 Retrieval-based chat
-      p Retrieve relevant excerpts from linked resources to give model responses useful context.
+      p
+        | Retrieve relevant excerpts from linked resources to give
+        | model responses useful context.
+
     article.feature-card
       span.feature-icon 04
       h2 Model customization
-      p Configure a model's personality instructions and welcome message independently of its underlying weights.
+      p
+        | Configure an agent's personality and fine-tune weights for a more fundamental change.
+        | Attach indexed resources for retrieval-augmented generation.
 
   section.note-strip
     div
       h2 RAG is not fine-tuning
-      p Resource indexing makes material searchable during chat. Fine-tuning requires a separate, tested training pipeline.
+      p
+        | Resource indexing makes material searchable during chat.
+        | Fine-tuning requires a separate, tested training pipeline.
+
     a.text-link(
       href=currentUser ? '/training' : '/signup'
       data-auth-redirect=!currentUser && auth0Configured

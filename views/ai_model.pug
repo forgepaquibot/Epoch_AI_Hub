@@ -4,12 +4,20 @@ block styles
   link(rel='stylesheet' href='/ai_model_style.css')
 
 block content
-  header.page-heading
-    p.eyebrow AI WORKSPACE
+  // ============================================================
+  // EPOCH — AI CONTROL CENTER
+  // ============================================================
+
+  header.page-heading#ai-model-overview(
+    data-progress-section
+    data-progress-label='Overview'
+  )
+    p.eyebrow EPOCH // AI CONTROL CENTER
     h1 AI Model Hub
     p.lead
-      | Register models from supported runtimes, create multiple agents
-      | with their own personalities, and connect resources for RAG.
+      | Register models from supported runtimes, create agents with
+      | individual personalities, and connect knowledge resources
+      | for retrieval-augmented generation.
 
   if message
     p.notice(role='status' aria-live='polite')= message
@@ -18,15 +26,18 @@ block content
   // 1. REGISTER AN OLLAMA MODEL AND CREATE AN AGENT
   // ============================================================
 
-  section.panel
+  section.panel#ollama-registration-section(
+    data-progress-section
+    data-progress-label='Ollama'
+  )
     .panel-heading
       div
-        p.eyebrow SERVER MODELS
+        p.eyebrow 01 // SERVER INFERENCE
         h2 Register an installed Ollama model
         p.muted
-          | This registers a model available on the application server
-          | and creates an agent that uses it. The agent's personality
-          | can be changed independently afterward.
+          | Connect a model installed on the application server and
+          | create an agent that uses it. Customize the agent's
+          | personality independently of the underlying model.
 
     if ollamaModels.length
       form(action='/register_ollama_model' method='post')
@@ -79,16 +90,18 @@ block content
   // 2. REGISTER A WEBLLM MODEL AND CREATE AN AGENT
   // ============================================================
 
-  section.panel
+  section.panel#webllm-registration-section(
+    data-progress-section
+    data-progress-label='WebLLM'
+  )
     .panel-heading
       div
-        p.eyebrow BROWSER MODELS
+        p.eyebrow 02 // BROWSER INFERENCE
         h2 Register a WebLLM model
         p.muted
-          | This registers a supported browser-model identifier. Model
-          | inference happens in the user's browser when compatible.
-          | An Ollama model name cannot automatically be used as a
-          | WebLLM model identifier.
+          | Register a supported browser-model identifier. Inference
+          | runs in the user's browser when the environment is compatible.
+          | An Ollama model name is not automatically a WebLLM identifier.
 
     form#register-webllm-form(
       action='/register_webllm_model'
@@ -181,14 +194,17 @@ block content
   // 3. REGISTERED MODEL CATALOG
   // ============================================================
 
-  section.panel
+  section.panel#model-catalog-section(
+    data-progress-section
+    data-progress-label='Model Catalog'
+  )
     .panel-heading
       div
-        p.eyebrow CATALOG
+        p.eyebrow 03 // MODEL CATALOG
         h2 Registered models
         p.muted
-          | Models describe the underlying model identity. They can
-          | be reused by multiple agents and may have deployments
+          | Explore the underlying models connected to Epoch. Models
+          | can be reused by multiple agents and may have deployments
           | through different compatible runtimes.
 
     if registeredModels.length
@@ -197,7 +213,10 @@ block content
           article.model-card
             .card-topline
               span.model-provider= model.model_format || model.model_family || 'Model'
-              span.visibility(class=model.has_enabled_deployment ? 'public' : 'private')= model.has_enabled_deployment ? 'Deployment configured' : 'No enabled deployment'
+
+              span.visibility(
+                class=model.has_enabled_deployment ? 'public' : 'private'
+              )= model.has_enabled_deployment ? 'Deployment configured' : 'No enabled deployment'
 
             h3= model.name
             p.model-reference= model.model_key
@@ -222,21 +241,26 @@ block content
                 )
                   img(src='/unregister_icon.png' alt='')
     else
-      p.empty-copy No models have been registered yet.
+      .empty-state
+        h3 No registered models
+        p Register an Ollama or WebLLM model to start building your agent catalog.
 
   // ============================================================
   // 4. CREATE ANOTHER AGENT FROM AN EXISTING MODEL
   // ============================================================
 
-  section.panel
+  section.panel#agent-creation-section(
+    data-progress-section
+    data-progress-label='Create Agent'
+  )
     .panel-heading
       div
-        p.eyebrow AGENTS
+        p.eyebrow 04 // AGENT CONFIGURATION
         h2 Create another agent
         p.muted
-          | Reuse a registered model to create a different assistant.
-          | Each agent can have its own personality, greeting, visibility,
-          | and preferred runtime.
+          | Build a different assistant from an existing model.
+          | Each agent can have its own personality, welcome message,
+          | visibility, and preferred runtime.
 
     if registeredModels.length
       form#new-agent-form(
@@ -315,27 +339,32 @@ block content
   // 5. AGENT CATALOG
   // ============================================================
 
-  section.panel
+  section.panel#agent-catalog-section(
+    data-progress-section
+    data-progress-label='Agent Catalog'
+  )
     .panel-heading
       div
-        p.eyebrow YOUR ASSISTANTS
+        p.eyebrow 05 // YOUR AI AGENTS
         h2 Registered agents
         p.muted
-          | Each agent has its own settings and resource links, even
-          | when several agents use the same underlying model.
-          | You can delete any agent you own, whether active or deprecated.
+          | Manage your assistants and explore agents available to you.
+          | Each agent maintains its own settings and resource links,
+          | even when multiple agents use the same underlying model.
 
     if agents.length
       .model-grid
         each agent in agents
           article.model-card
             .card-topline
-              span.model-provider= agent.provider || 'Unknown provider'
+              span.model-provider= agent.provider == 'unknown' ? agent.model_format : agent.provider
 
               if Number(agent.is_deprecated) === 1
                 span.status.status-disabled Deprecated
               else
-                span.visibility(class=agent.is_public ? 'public' : 'private')= agent.is_public ? 'Public' : 'Private'
+                span.visibility(
+                  class=agent.is_public ? 'public' : 'private'
+                )= agent.is_public ? 'Public' : 'Private'
 
             h3= agent.name
             p.model-reference= agent.model_name || agent.model_key
@@ -367,21 +396,26 @@ block content
                   )
                     img(src='/trash_icon.png' alt='')
     else
-      p.empty-copy No agents have been created yet.
+      .empty-state
+        h3 No agents created yet
+        p Register a model and create your first agent to get started.
 
   // ============================================================
   // 6. RESOURCE INDEXING AND AGENT RESOURCE LINKS
   // ============================================================
 
-  section.panel#rag-panel
+  section.panel#rag-panel(
+    data-progress-section
+    data-progress-label='Knowledge Integration'
+  )
     .panel-heading
       div
-        p.eyebrow RAG INDEXING
+        p.eyebrow 06 // KNOWLEDGE INTEGRATION
         h2 Process a resource
         p.muted
-          | Indexing extracts content and builds embeddings. This is
-          | separate from fine-tuning model weights. Indexed resources
-          | are linked to an agent rather than directly to a model.
+          | Indexing extracts content and builds embeddings for retrieval.
+          | This is separate from fine-tuning model weights. Indexed
+          | resources are linked to agents rather than directly to models.
 
     if activeAgents.length && ownedResources.length
       form#process-resource-form(
@@ -415,36 +449,44 @@ block content
         | Create an active agent and upload a resource to begin indexing.
 
     if activeAgents.length && readyResources.length
-      h3 Link an already indexed resource
+      .metadata-panel
+        p.eyebrow EXISTING KNOWLEDGE
+        h3 Link an already indexed resource
+        p.muted
+          | Connect a resource that's already indexed without processing it again.
 
-      form(action='/link_resource' method='post')
-        .form-grid
-          label.field(for='link-agent')
-            span Agent
-            select#link-agent(name='agent_id' required)
-              option(value='') Choose an agent
-              each agent in activeAgents
-                option(value=agent.agent_id)= agent.name + ' — ' + (agent.model_name || agent.model_key)
+        form(action='/link_resource' method='post')
+          .form-grid
+            label.field(for='link-agent')
+              span Agent
+              select#link-agent(name='agent_id' required)
+                option(value='') Choose an agent
+                each agent in activeAgents
+                  option(value=agent.agent_id)= agent.name + ' — ' + (agent.model_name || agent.model_key)
 
-          label.field(for='link-resource')
-            span Ready resource
-            select#link-resource(name='resource_id' required)
-              option(value='') Choose a ready resource
-              each resource in readyResources
-                option(value=resource.resource_id)= resource.title
+            label.field(for='link-resource')
+              span Ready resource
+              select#link-resource(name='resource_id' required)
+                option(value='') Choose a ready resource
+                each resource in readyResources
+                  option(value=resource.resource_id)= resource.title
 
-        button(type='submit') Link resource
+          button(type='submit') Link resource
 
   // ============================================================
   // 7. RESOURCE PROCESSING ACTIVITY
   // ============================================================
 
-  section.panel
+  section.panel#resource-processing-activity(
+    data-progress-section
+    data-progress-label='Indexing Activity'
+  )
     .panel-heading
       div
-        p.eyebrow ACTIVITY
+        p.eyebrow 07 // SYSTEM ACTIVITY
         h2 Recent indexing jobs
         p.muted
+          | Monitor resource extraction, validation, and indexing.
           | Job statuses and progress refresh automatically.
 
     form.job-history-actions(
@@ -455,7 +497,7 @@ block content
       button.button.secondary.clear-history-button(
         type='submit'
         aria-label='Clear indexing history'
-        title='Clear History'
+        title='Clear history'
       )
         img(src='/clear_history_icon.png' alt='')
 
@@ -468,6 +510,7 @@ block content
             th Status
             th Progress
             th Started
+
         tbody#resource-processing-history-body
           if processingJobs.length
             each job in processingJobs
@@ -487,13 +530,14 @@ block content
   // 8. FINE-TUNING
   // ============================================================
 
-  .note-strip
+  section.note-strip#fine-tuning-info
     div
-      h2 Want to fine-tune a model?
+      p.eyebrow MODEL TRAINING
+      h2 Fine-tuning is a separate process
       p
-        | Fine-tuning uses a separate training process and is not the
-        | same as resource indexing. Fine-tuning support is being
-        | developed separately from model inference.
+        | Resource indexing makes reference material searchable during chat.
+        | Fine-tuning uses a separate training pipeline to update model weights.
+
     a.button.secondary(href='/training') View training catalog
 
 block scripts

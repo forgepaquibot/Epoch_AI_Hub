@@ -4,7 +4,14 @@ block styles
   link(rel='stylesheet' href='/resources_style.css')
 
 block content
-  header.page-heading
+  // ============================================================
+  // RESOURCE HUB OVERVIEW
+  // ============================================================
+
+  header.page-heading#resources-overview(
+    data-progress-section
+    data-progress-label='Overview'
+  )
     p.eyebrow KNOWLEDGE LIBRARY
     h1 Data Resource Hub
     p.lead
@@ -18,7 +25,10 @@ block content
   // UPLOAD RESOURCE
   // ============================================================
 
-  section.panel
+  section.panel#resource-upload-section(
+    data-progress-section
+    data-progress-label='Upload'
+  )
     .panel-heading
       div
         p.eyebrow RESOURCE MANAGEMENT
@@ -160,7 +170,10 @@ block content
   // SEARCH RESOURCES
   // ============================================================
 
-  section.panel
+  section.panel#resource-search-section(
+    data-progress-section
+    data-progress-label='Search'
+  )
     .panel-heading
       div
         p.eyebrow DISCOVER
@@ -217,7 +230,10 @@ block content
   // RESOURCE LIBRARY AND RESULTS
   // ============================================================
 
-  section.results-section
+  section.results-section#resource-library-section(
+    data-progress-section
+    data-progress-label='Resources'
+  )
     .section-heading
       div
         if query || selectedAuthor || selectedSubject
@@ -237,19 +253,22 @@ block content
             .card-topline
               span.file-chip= (resource.resource_type || 'resource').toUpperCase()
 
-              if Number(resource.user_id) == Number(currentUserId)
-                form.resource-delete-form(
-                  action='/resources/' + resource.resource_id + '/delete'
-                  method='post'
-                  onsubmit="return confirm('Permanently delete this resource, its indexed data, and its stored file? This cannot be undone.');"
-                )
-                  button.button.secondary(
-                    type='submit'
-                    aria-label='Delete ' + resource.title
-                  )#delete-button
-                    img(src='trash_icon.png')
+              .resource-card-topline-actions
+                if Number(resource.user_id) === Number(currentUserId)
+                  form.resource-delete-form(
+                    action='/resources/' + resource.resource_id + '/delete'
+                    method='post'
+                    onsubmit="return confirm('Permanently delete this resource, its indexed data, and its stored file? This cannot be undone.');"
+                  )
+                    button.button.secondary.resource-delete-button(
+                      type='submit'
+                      aria-label='Delete ' + resource.title
+                    )
+                      img(src='trash_icon.png' alt='')
 
-              span.status(class='status-' + (resource.processing_status || 'uploaded'))= resource.processing_status || 'uploaded'
+                span.status(
+                  class='status-' + (resource.processing_status || 'uploaded')
+                )= resource.processing_status || 'uploaded'
 
             h3= resource.title
 
@@ -305,7 +324,7 @@ block content
                       type='submit'
                       aria-label='Unindex ' + resource.title
                     ) Unindex
-              
+
               a.text-link(href='/ai_model#rag-panel') Manage indexing
     else
       .empty-state
@@ -317,7 +336,14 @@ block content
           p Upload a resource, then index it to make its contents searchable during agent conversations.
           a.button.secondary(href='/ai_model') Open AI Model Hub
 
-  .note-strip
+  // ============================================================
+  // RESOURCE INDEXING INFORMATION
+  // ============================================================
+
+  section.note-strip#resource-indexing-info(
+    data-progress-section
+    data-progress-label='Indexing'
+  )
     div
       h2 How resource indexing works
       p
