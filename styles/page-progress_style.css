@@ -11,7 +11,7 @@
   position: fixed;
   z-index: 1000;
   top: 50%;
-  right: 3.5rem;
+  left: 1.5rem;
   transform: translateY(-50%);
 
   width: auto;
@@ -46,7 +46,7 @@
   justify-content: center;
 
   width: 24px;
-  height: 36px;
+  height: 70px;
 
   margin: 0;
   padding: 0;
@@ -171,7 +171,7 @@
 #epoch-page-progress-rail .epoch-progress-label {
   position: absolute;
 
-  right: calc(100% + 12px);
+  left: calc(100% + 12px);
   top: 50%;
 
   display: block;
@@ -185,7 +185,7 @@
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.4;
-  text-align: right;
+  text-align: left;
   overflow-wrap: anywhere;
 
   opacity: 0.85;
